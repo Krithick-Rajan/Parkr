@@ -79,7 +79,7 @@ router.post("/", (req, res) => {
     availableSlots: Number(req.body.total) || 10,
     open: req.body.open || "06:00",
     close: req.body.close || "23:00",
-    ownerId: req.body.ownerId || "USR-002",
+    ownerId: req.body.ownerId || "",
     owner: req.body.owner || "Parking Owner",
     imageUrl: req.body.imageUrl || "",
     status: "pending",

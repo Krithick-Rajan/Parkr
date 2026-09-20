@@ -39,7 +39,7 @@ router.post("/", async (req, res) => {
     displayId: bookingId,
     slotId: req.body.slotId || "",
     slot: req.body.slot || "Parking Slot",
-    driverId: req.body.driverId || "USR-001",
+    driverId: req.body.driverId || "",
     driver: req.body.driver || "Driver",
     bookingDate: req.body.date || req.body.bookingDate || new Date().toISOString().split("T")[0],
     date: req.body.date || req.body.bookingDate || new Date().toISOString().split("T")[0],

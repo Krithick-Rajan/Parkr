@@ -186,8 +186,6 @@ Parkr/
 │
 ├── firebase/
 │   └── firebase-config.js    # Public Firebase Web SDK configuration
-├── scripts/
-│   └── dev-server.cjs        # Standalone development static server
 ├── .env.example              # Template for environment variables
 ├── .gitignore                # Git ignore rules for node_modules, .env, and logs
 ├── README.md                 # Project documentation
@@ -240,15 +238,15 @@ Open your browser and visit:
 
 ---
 
-## 🔑 Demo Credentials
+## 🔑 User Onboarding & Roles
 
-Parkr comes pre-seeded with ready-to-test accounts for all three roles:
+Users dynamically create their own accounts via the [Registration Portal](http://127.0.0.1:5500/register.html) by selecting their designated role:
 
-| Role | Email Address | Password | Workspace |
-|---|---|---|---|
-| **Driver** | `arjun@parkr.com` | `driver123` | [driver.html](http://127.0.0.1:5500/driver.html) |
-| **Parking Owner** | `harish@parkr.com` | `owner123` | [owner.html](http://127.0.0.1:5500/owner.html) |
-| **Administrator** | `krithick@parkr.com` | `admin123` | [admin.html](http://127.0.0.1:5500/admin.html) |
+- **Driver**: Discover verified parking on interactive Leaflet maps, reserve parking slots, and process digital payments.
+- **Parking Owner**: List parking spaces with custom photos, set hourly rates and operating hours, and track driver reservations.
+- **Administrator**: Verify and approve owner listings, audit financial transactions, and inspect platform analytics.
+
+Once registered, users can login at [Login Portal](http://127.0.0.1:5500/login.html) where their role is automatically recognized.
 
 ---
 

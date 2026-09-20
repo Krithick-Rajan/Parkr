@@ -6,7 +6,7 @@
     payments: "parkrPayments",
     dataVersion: "parkrDataVersion"
   };
-  const DATA_VERSION = "admin-krithick-2026-09-20-v3";
+  const DATA_VERSION = "parkr-prod-v1.0";
   const DEMO_EMAIL_SUFFIX = "@parkr.test";
   const DEMO_USER_IDS = new Set(["USR-01", "USR-02", "USR-03", "USR-04", "USR-05"]);
   const DEMO_SLOT_IDS = new Set([
@@ -259,11 +259,7 @@
     });
   }
 
-  function knownRoleForEmail(email) {
-    const norm = normalizeText(email);
-    if (norm === "krithick@parkr.com" || norm === "admin@parkr.com") return "admin";
-    if (norm === "harish@parkr.com" || norm === "owner@parkr.com") return "owner";
-    if (norm === "arjun@parkr.com" || norm === "driver@parkr.com") return "driver";
+  function knownRoleForEmail() {
     return "";
   }
 
@@ -327,78 +323,7 @@
   }
 
   function seedUsers() {
-    return [
-      {
-        id: "USR-001",
-        userId: "USR-001",
-        displayId: "USR-001",
-        name: "Arjun",
-        email: "arjun@parkr.com",
-        phone: "+91 98765 43210",
-        role: "driver",
-        status: "approved",
-        vehicle: "KA 01 AB 1234",
-        localPassword: "password123"
-      },
-      {
-        id: "USR-002",
-        userId: "USR-002",
-        displayId: "USR-002",
-        name: "Harish",
-        email: "harish@parkr.com",
-        phone: "+91 98765 43211",
-        role: "owner",
-        status: "approved",
-        business: "City Center Parking Ltd",
-        localPassword: "password123"
-      },
-      {
-        id: "USR-003",
-        userId: "USR-003",
-        displayId: "USR-003",
-        name: "Krithick Rajan",
-        email: "krithick@parkr.com",
-        phone: "+91 98765 43212",
-        role: "admin",
-        status: "approved",
-        localPassword: "password123"
-      },
-      {
-        id: "USR-004",
-        userId: "USR-004",
-        displayId: "USR-004",
-        name: "Arjun (Driver)",
-        email: "driver@parkr.com",
-        phone: "+91 98765 43210",
-        role: "driver",
-        status: "approved",
-        vehicle: "KA 01 AB 1234",
-        localPassword: "password123"
-      },
-      {
-        id: "USR-005",
-        userId: "USR-005",
-        displayId: "USR-005",
-        name: "Harish (Owner)",
-        email: "owner@parkr.com",
-        phone: "+91 98765 43211",
-        role: "owner",
-        status: "approved",
-        business: "City Center Parking Ltd",
-        localPassword: "password123"
-      },
-      {
-        id: "USR-006",
-        userId: "USR-006",
-        displayId: "USR-006",
-        name: "Krithick (Admin)",
-        email: "admin@parkr.com",
-        phone: "+91 98765 43212",
-        role: "admin",
-        status: "approved",
-        localPassword: "password123"
-      }
-    ];
+    return [];
   }
 
   function seedSlots() {
@@ -536,10 +461,7 @@
     let existing = users.find((user) => normalizeText(user.email) === normalizeText(email));
     if (!existing) {
       const displayId = nextReadableId("USR", users);
-      let name = email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
-      if (knownRole === "admin") name = "Krithick Rajan";
-      else if (knownRole === "owner") name = "Harish";
-      else if (knownRole === "driver") name = "Arjun";
+      const name = email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 
       existing = makeUser({
         id: displayId,
@@ -565,10 +487,7 @@
     if (!knownRole && normalizeText(existing.role) !== normalizeText(role || existing.role)) {
       throw new Error("This email is registered as " + existing.role + ". Please login as " + existing.role + ".");
     }
-    if (!existing.localPassword || existing.localPassword === "password123") {
-      existing.localPassword = String(password || "");
-      upsertLocal(STORAGE.users, seedUsers(), existing);
-    } else if (String(password || "") !== String(existing.localPassword || "")) {
+    if (existing.localPassword && String(password || "") !== String(existing.localPassword)) {
       throw new Error("Incorrect password. Please try again.");
     }
     const user = makeUser(existing);

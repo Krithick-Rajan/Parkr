@@ -34,7 +34,7 @@ router.post("/verify", (req, res) => {
     id: paymentId,
     paymentId,
     displayId: paymentId,
-    bookingId: bookingId || "BK-001",
+    bookingId: bookingId || "",
     amount: Number(amount || 0),
     paymentStatus: "paid",
     status: "paid",

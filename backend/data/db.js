@@ -4,40 +4,7 @@ const path = require("path");
 const dbPath = path.join(__dirname, "db.json");
 
 const initialData = {
-  users: [
-    {
-      id: "USR-001",
-      userId: "USR-001",
-      displayId: "USR-001",
-      name: "Krithick Rajan",
-      email: "driver@parkr.com",
-      phone: "+91 98765 43210",
-      role: "driver",
-      status: "approved",
-      vehicle: "KA 01 AB 1234"
-    },
-    {
-      id: "USR-002",
-      userId: "USR-002",
-      displayId: "USR-002",
-      name: "Ramesh Sharma",
-      email: "owner@parkr.com",
-      phone: "+91 98765 43211",
-      role: "owner",
-      status: "approved",
-      business: "City Center Parking Ltd"
-    },
-    {
-      id: "USR-003",
-      userId: "USR-003",
-      displayId: "USR-003",
-      name: "System Admin",
-      email: "admin@parkr.com",
-      phone: "+91 98765 43212",
-      role: "admin",
-      status: "approved"
-    }
-  ],
+  users: [],
   slots: [
     {
       id: "SL-001",
@@ -54,16 +21,16 @@ const initialData = {
       vehicleType: "Car",
       total: 25,
       totalSlots: 25,
-      available: 18,
-      availableSlots: 18,
+      available: 25,
+      availableSlots: 25,
       status: "approved",
       verificationStatus: "approved",
       availabilityStatus: "available",
       rating: 4.8,
       open: "06:00",
       close: "23:00",
-      ownerId: "USR-002",
-      owner: "Ramesh Sharma",
+      ownerId: "",
+      owner: "Public Parking Authority",
       features: ["CCTV", "Covered", "Security Guard", "EV Charging"]
     },
     {
@@ -81,16 +48,16 @@ const initialData = {
       vehicleType: "Bike",
       total: 40,
       totalSlots: 40,
-      available: 24,
-      availableSlots: 24,
+      available: 40,
+      availableSlots: 40,
       status: "approved",
       verificationStatus: "approved",
       availabilityStatus: "available",
       rating: 4.6,
       open: "07:00",
       close: "22:00",
-      ownerId: "USR-002",
-      owner: "Ramesh Sharma",
+      ownerId: "",
+      owner: "Public Parking Authority",
       features: ["CCTV", "Well Lit", "Easy Exit"]
     },
     {
@@ -108,16 +75,16 @@ const initialData = {
       vehicleType: "Car",
       total: 20,
       totalSlots: 20,
-      available: 9,
-      availableSlots: 9,
+      available: 20,
+      availableSlots: 20,
       status: "approved",
       verificationStatus: "approved",
       availabilityStatus: "available",
       rating: 4.9,
       open: "08:00",
       close: "23:59",
-      ownerId: "USR-002",
-      owner: "Ramesh Sharma",
+      ownerId: "",
+      owner: "Public Parking Authority",
       features: ["Valet Assistance", "Covered", "CCTV", "24/7 Access"]
     }
   ],

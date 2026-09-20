@@ -172,19 +172,11 @@ import { firebaseConfig, isFirebaseConfigured } from "../../firebase/firebase-co
       return record;
     }
 
-    function knownRoleForEmail(email) {
-      const norm = String(email || "").trim().toLowerCase();
-      if (norm === "krithick@parkr.com" || norm === "admin@parkr.com") return "admin";
-      if (norm === "harish@parkr.com" || norm === "owner@parkr.com") return "owner";
-      if (norm === "arjun@parkr.com" || norm === "driver@parkr.com") return "driver";
+    function knownRoleForEmail() {
       return "";
     }
 
-    function knownNameForEmail(email) {
-      const norm = String(email || "").trim().toLowerCase();
-      if (norm === "krithick@parkr.com" || norm === "admin@parkr.com") return "Krithick Rajan";
-      if (norm === "harish@parkr.com" || norm === "owner@parkr.com") return "Harish";
-      if (norm === "arjun@parkr.com" || norm === "driver@parkr.com") return "Arjun";
+    function knownNameForEmail() {
       return "";
     }
 

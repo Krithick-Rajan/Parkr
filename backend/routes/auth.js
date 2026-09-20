@@ -61,20 +61,7 @@ router.post("/login", (req, res) => {
 
   const user = users.find((u) => u.email && u.email.toLowerCase() === (email || "").toLowerCase());
   if (!user) {
-    // If not found in mock db, create a session user for seamless testing
-    const fallbackUser = {
-      id: "USR-" + String(users.length + 1).padStart(3, "0"),
-      userId: "USR-" + String(users.length + 1).padStart(3, "0"),
-      displayId: "USR-" + String(users.length + 1).padStart(3, "0"),
-      name: (email || "").split("@")[0] || "User",
-      email: (email || "").toLowerCase(),
-      role: role || "driver",
-      status: "approved"
-    };
-    users.push(fallbackUser);
-    db.users = users;
-    writeDb(db);
-    return res.json(fallbackUser);
+    return res.status(404).json({ error: "No account found with this email. Please register first." });
   }
 
   res.json(user);
