@@ -51,8 +51,9 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// 4. Serve Static Frontend Files with Fast Caching
-app.use(express.static(rootDir, {
+// 4. Serve Static Frontend Files from public/ directory
+const publicDir = path.join(rootDir, "public");
+app.use(express.static(publicDir, {
   extensions: ["html"],
   etag: true,
   lastModified: true,
@@ -69,7 +70,7 @@ app.use(express.static(rootDir, {
 
 // Fallback index.html
 app.get("/", (req, res) => {
-  res.sendFile(path.join(rootDir, "index.html"));
+  res.sendFile(path.join(publicDir, "index.html"));
 });
 
 // Start Server

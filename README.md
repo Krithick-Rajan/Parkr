@@ -112,7 +112,7 @@ Parkr strictly implements all software engineering models specified in standard 
 ```
 
 ### UML Alignment Highlights
-1. **Class Diagram**: Implemented in [`assets/js/models.js`](assets/js/models.js) with OOP class hierarchies:
+1. **Class Diagram**: Implemented in [`public/assets/js/models.js`](public/assets/js/models.js) with OOP class hierarchies:
    - `User` $\to$ `Driver`, `ParkingOwner`, `Admin`
    - `ParkingSlot`, `Booking`, `Payment`, `Review`
 2. **Use Case Realization**: Complete end-to-end user journeys for Drivers (Search $\to$ Book $\to$ Pay), Owners (List $\to$ Upload Photo $\to$ Manage), and Admins (Verify $\to$ Audit $\to$ Report).
@@ -140,63 +140,62 @@ Parkr strictly implements all software engineering models specified in standard 
 
 ```text
 Parkr/
-├── .env.example                # Template for environment variables
-├── .gitignore                  # Git ignore rules for node_modules, .env, and logs
-├── README.md                   # Project documentation
-├── firebase.json               # Firebase deployment configuration
-├── firestore.rules             # Cloud Firestore security rules
-├── package.json                # Project dependencies and npm scripts
-├── package-lock.json           # Locked dependency tree
-├── vercel.json                 # Vercel serverless deployment config
-│
-├── index.html                  # Main marketing & discovery landing page
-├── login.html                  # Unified role-based authentication portal
-├── register.html               # New user onboarding (Driver / Space Owner)
-├── driver.html                 # Driver workspace & interactive booking map
-├── owner.html                  # Parking owner workspace & slot management
-├── admin.html                  # System administrator oversight panel
-│
-├── assets/
-│   ├── css/
-│   │   ├── auth.css            # Authentication form styling
-│   │   ├── components.css      # Reusable UI component library (cards, modals, badges)
-│   │   ├── dashboard.css       # Workspace grid layouts and sidebar styling
-│   │   ├── responsive.css      # Mobile, tablet, and widescreen breakpoints
-│   │   └── style.css           # Global typography, colors, and base styles
-│   ├── images/
-│   │   └── logo/
-│   │       ├── parkr-logo.png  # Primary Parkr logo
-│   │       └── parkr-logo-orange.svg
-│   └── js/
-│       ├── admin.js            # Admin workspace controller
-│       ├── app.js              # Global router, toast system, and session guardian
-│       ├── auth.js             # Authentication form validation and role redirector
-│       ├── driver.js           # Driver map controller, search, and checkout engine
-│       ├── firebase-backend.js # Firebase client initialization & sync layer
-│       ├── home.js             # Landing page interactive features
-│       ├── models.js           # OOP domain models matching UML class diagram
-│       ├── owner.js            # Owner workspace controller & photo upload engine
-│       ├── store.js            # Unified reactive data store (Firebase + Local DB)
-│       └── utils.js            # Formatting, date parsing, and DOM utilities
-│
-├── backend/
-│   ├── server.js               # Express application entry point
+├── backend/                  # Server-side architecture & REST API
 │   ├── data/
-│   │   ├── db.js               # Persistent JSON file storage manager
-│   │   └── db.json             # Seeded database with parking spots and sample users
+│   │   ├── db.js             # Atomic file-backed JSON database engine
+│   │   └── db.json           # Seeded database with parking spots and sample users
 │   ├── routes/
-│   │   ├── auth.js             # User login and registration endpoints
-│   │   ├── bookings.js         # Reservation lifecycle endpoints
-│   │   ├── payments.js         # Payment processing and validation
-│   │   ├── reports.js          # Aggregated analytics and reporting
-│   │   └── slots.js            # Parking slot CRUD and geo-query endpoints
-│   └── services/
-│       └── notificationService.js # Nodemailer booking alert service
+│   │   ├── auth.js           # User login and registration endpoints
+│   │   ├── bookings.js       # Reservation lifecycle endpoints
+│   │   ├── payments.js       # Payment processing and validation
+│   │   ├── reports.js        # Aggregated analytics and reporting
+│   │   └── slots.js          # Parking slot CRUD and geo-query endpoints
+│   ├── services/
+│   │   └── notificationService.js # Nodemailer booking alert service
+│   └── server.js             # Express application entry point
+│
+├── public/                   # Publicly served web client & static assets
+│   ├── index.html            # Main marketing & discovery landing page
+│   ├── login.html            # Unified role-based authentication portal
+│   ├── register.html         # New user onboarding (Driver / Space Owner)
+│   ├── driver.html           # Driver workspace & interactive booking map
+│   ├── owner.html            # Parking owner workspace & slot management
+│   ├── admin.html            # System administrator oversight panel
+│   └── assets/
+│       ├── css/
+│       │   ├── auth.css          # Authentication form styling
+│       │   ├── components.css    # Reusable UI component library (cards, modals, badges)
+│       │   ├── dashboard.css     # Workspace grid layouts and sidebar styling
+│       │   ├── responsive.css    # Mobile, tablet, and widescreen breakpoints
+│       │   └── style.css         # Global typography, colors, and base styles
+│       ├── images/
+│       │   └── logo/
+│       │       ├── parkr-logo.png # Primary Parkr logo
+│       │       └── parkr-logo-orange.svg
+│       └── js/
+│           ├── admin.js          # Admin workspace controller
+│           ├── app.js            # Global router, toast system, and session guardian
+│           ├── auth.js           # Authentication form validation and role redirector
+│           ├── driver.js         # Driver map controller, search, and checkout engine
+│           ├── firebase-backend.js # Firebase client initialization & sync layer
+│           ├── home.js           # Landing page interactive features
+│           ├── models.js         # OOP domain models matching UML class diagram
+│           ├── owner.js          # Owner workspace controller & photo upload engine
+│           ├── store.js          # Unified reactive data store (Firebase + Local DB)
+│           └── utils.js          # Formatting, date parsing, and DOM utilities
 │
 ├── firebase/
-│   └── firebase-config.js      # Public Firebase Web SDK configuration
-└── scripts/
-    └── dev-server.cjs          # Standalone development static server
+│   └── firebase-config.js    # Public Firebase Web SDK configuration
+├── scripts/
+│   └── dev-server.cjs        # Standalone development static server
+├── .env.example              # Template for environment variables
+├── .gitignore                # Git ignore rules for node_modules, .env, and logs
+├── README.md                 # Project documentation
+├── firebase.json             # Firebase deployment configuration
+├── firestore.rules           # Cloud Firestore security rules
+├── package.json              # Project dependencies and npm scripts
+├── package-lock.json         # Locked dependency tree
+└── vercel.json               # Vercel serverless deployment config
 ```
 
 ---

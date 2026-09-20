@@ -78,7 +78,8 @@ http.createServer((request, response) => {
     return;
   }
 
-  let filePath = path.normalize(path.join(root, pathname));
+  const publicPath = path.normalize(path.join(root, "public", pathname));
+  let filePath = fs.existsSync(publicPath) ? publicPath : path.normalize(path.join(root, pathname));
   if (!filePath.startsWith(root)) {
     response.writeHead(403);
     response.end("Forbidden");
