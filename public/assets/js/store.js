@@ -64,7 +64,7 @@
       return Promise.resolve(global.ParkrBackend);
     }
     if (global.ParkrBackendReady) {
-      return Promise.race([global.ParkrBackendReady, wait(350).then(() => global.ParkrBackend || null)]);
+      return Promise.race([global.ParkrBackendReady, wait(1500).then(() => global.ParkrBackend || null)]);
     }
     return new Promise((resolve) => {
       const done = (backend) => {
@@ -73,7 +73,7 @@
       };
       const listener = (event) => done(event.detail);
       global.addEventListener("parkr-backend-ready", listener, { once: true });
-      wait(300).then(() => done(global.ParkrBackend || null));
+      wait(1500).then(() => done(global.ParkrBackend || null));
     });
   }
 
@@ -259,34 +259,47 @@
     });
   }
 
+  const TEST_USER_EMAILS = new Set([
+    "arjun@parkr.com",
+    "harish@parkr.com",
+    "krithick@parkr.com",
+    "driver@parkr.com",
+    "owner@parkr.com",
+    "admin@parkr.com",
+    "sri@parkr.com"
+  ]);
+
+  function isTestUser(row) {
+    if (!row) return false;
+    const email = normalizeText(row.email);
+    const userId = String(row.userId || row.id || row.displayId || "");
+    const name = normalizeText(row.name || "");
+    if (TEST_USER_EMAILS.has(email) || email.endsWith("@parkr.com") || email.endsWith(DEMO_EMAIL_SUFFIX) || email.includes("test@") || email.includes("demo@")) return true;
+    if (/^USR-00[1-9]$/i.test(userId) || DEMO_USER_IDS.has(userId)) return true;
+    if (name.includes("(driver)") || name.includes("(owner)") || name.includes("(admin)")) return true;
+    return false;
+  }
+
+  // Immediate purge on script load
+  try {
+    const rawStored = JSON.parse(localStorage.getItem(STORAGE.users) || "[]");
+    if (Array.isArray(rawStored)) {
+      const cleanStored = rawStored.filter((u) => !isTestUser(u));
+      localStorage.setItem(STORAGE.users, JSON.stringify(cleanStored));
+    }
+    const current = JSON.parse(localStorage.getItem("parkrUser") || "null");
+    if (current && isTestUser(current)) {
+      localStorage.removeItem("parkrUser");
+    }
+  } catch (_) {}
+
   function knownRoleForEmail() {
     return "";
   }
 
   function migrateStoredData() {
-    if (localStorage.getItem(STORAGE.dataVersion) === DATA_VERSION) return;
     try {
-      const LEGACY_TEST_EMAILS = new Set([
-        "arjun@parkr.com",
-        "harish@parkr.com",
-        "krithick@parkr.com",
-        "driver@parkr.com",
-        "owner@parkr.com",
-        "admin@parkr.com",
-        "sri@parkr.com"
-      ]);
-      const LEGACY_IDS = new Set([
-        "USR-001", "USR-002", "USR-003", "USR-004", "USR-005", "USR-006", "USR-007", "USR-010"
-      ]);
-
-      const users = readStored(STORAGE.users).filter((user) => {
-        if (!user) return false;
-        const email = normalizeText(user.email);
-        const id = String(user.id || user.userId || "");
-        if (LEGACY_TEST_EMAILS.has(email) || LEGACY_IDS.has(id)) return false;
-        return !isDemoUser(user);
-      });
-
+      const users = readStored(STORAGE.users).filter((user) => !isTestUser(user));
       const slots = readStored(STORAGE.slots).filter((slot) => !isDemoSlot(slot)).map(normalizeSlotRecord);
       const bookings = readStored(STORAGE.bookings).filter((b) => {
         const id = String(b.bookingId || b.id || "");
@@ -303,11 +316,8 @@
       writeStored(STORAGE.payments, payments);
 
       const currentUser = JSON.parse(localStorage.getItem("parkrUser") || "null");
-      if (currentUser) {
-        const curEmail = normalizeText(currentUser.email);
-        if (LEGACY_TEST_EMAILS.has(curEmail) || isDemoUser(currentUser)) {
-          localStorage.removeItem("parkrUser");
-        }
+      if (currentUser && isTestUser(currentUser)) {
+        localStorage.removeItem("parkrUser");
       }
 
       localStorage.setItem(STORAGE.dataVersion, DATA_VERSION);
@@ -354,7 +364,7 @@
   }
 
   function listLocalUsers() {
-    return getCollection(STORAGE.users, seedUsers());
+    return readStored(STORAGE.users).filter((u) => !isTestUser(u)).map(makeUser);
   }
 
   function listLocalSlots() {
@@ -584,13 +594,13 @@
 
     // 1. If Cloud Backend (Firebase) is connected, it is the single authoritative source of truth
     try {
-      const backend = await Promise.race([getBackend(), wait(1200)]);
+      const backend = await Promise.race([getBackend(), wait(2500)]);
       if (backend && backend.isConfigured && backend.listUsers) {
         const cloudUsers = await backend.listUsers();
         if (Array.isArray(cloudUsers)) {
-          // Keep local storage strictly matching Cloud Firestore (never merge stale mock users)
-          setCollection(STORAGE.users, cloudUsers);
-          const result = withDisplayIds(cloudUsers.map(makeUser), "USR");
+          const cleanCloud = cloudUsers.filter((u) => !isTestUser(u));
+          setCollection(STORAGE.users, cleanCloud);
+          const result = withDisplayIds(cleanCloud.map(makeUser), "USR");
           memoryCache.users = result;
           return result;
         }
@@ -605,8 +615,9 @@
       if (resp.ok) {
         const apiUsers = await resp.json();
         if (Array.isArray(apiUsers)) {
-          setCollection(STORAGE.users, apiUsers);
-          const result = withDisplayIds(apiUsers.map(makeUser), "USR");
+          const cleanApi = apiUsers.filter((u) => !isTestUser(u));
+          setCollection(STORAGE.users, cleanApi);
+          const result = withDisplayIds(cleanApi.map(makeUser), "USR");
           memoryCache.users = result;
           return result;
         }
@@ -614,7 +625,7 @@
     } catch (err) {}
 
     // 3. Fallback to clean local storage
-    const local = listLocalUsers();
+    const local = listLocalUsers().filter((u) => !isTestUser(u));
     const result = withDisplayIds(local.map(makeUser), "USR");
     memoryCache.users = result;
     return result;
@@ -636,6 +647,10 @@
 
   async function deleteUser(userId) {
     invalidateCache("users");
+    if (!userId) return true;
+    const target = String(userId).trim().toLowerCase();
+
+    // 1. Delete from Cloud Firestore
     const backend = await getBackend();
     if (backend && backend.deleteUser) {
       try {
@@ -644,37 +659,35 @@
         console.warn("[Store] Cloud deleteUser failed:", err);
       }
     }
-    // Also delete from Express API
+
+    // 2. Also delete from Express API
     fetch(`/api/auth/users/${encodeURIComponent(userId)}`, { method: "DELETE" }).catch(() => {});
 
-    const rows = listLocalUsers().filter((user) => {
-      const id = idOf(user);
-      return id !== userId && user.userId !== userId && user.id !== userId && user.email !== userId;
+    // 3. Delete from LocalStorage
+    const rows = readStored(STORAGE.users).filter((user) => {
+      if (!user) return false;
+      const uEmail = normalizeText(user.email);
+      const uId = normalizeText(user.id);
+      const uUserId = normalizeText(user.userId);
+      const uDisplayId = normalizeText(user.displayId);
+      return uEmail !== target && uId !== target && uUserId !== target && uDisplayId !== target;
     });
     setCollection(STORAGE.users, rows);
+
+    // 4. Clear current session if self
     const current = currentUserFromStorage();
-    if (current && (idOf(current) === userId || current.userId === userId || current.email === userId)) {
-      localStorage.removeItem("parkrUser");
+    if (current) {
+      const cEmail = normalizeText(current.email);
+      const cId = normalizeText(current.id || current.userId);
+      if (cEmail === target || cId === target) {
+        localStorage.removeItem("parkrUser");
+      }
     }
     return true;
   }
 
   async function purgeTestUsers() {
     invalidateCache("users");
-    const TEST_EMAILS = new Set([
-      "arjun@parkr.com",
-      "harish@parkr.com",
-      "krithick@parkr.com",
-      "driver@parkr.com",
-      "owner@parkr.com",
-      "admin@parkr.com",
-      "sri@parkr.com"
-    ]);
-
-    const isTestEmail = (email) => {
-      const e = normalizeText(email);
-      return TEST_EMAILS.has(e) || e.endsWith("@parkr.com") || e.includes("test@") || e.includes("demo@");
-    };
 
     const backend = await getBackend();
     if (backend && backend.isConfigured && backend.deleteUser) {
@@ -683,7 +696,7 @@
           const cloudUsers = await backend.listUsers();
           if (Array.isArray(cloudUsers)) {
             for (const u of cloudUsers) {
-              if (isTestEmail(u.email) || isDemoUser(u) || String(u.id || "").startsWith("USR-")) {
+              if (isTestUser(u)) {
                 if (u.id) {
                   try { await backend.deleteUser(u.id); } catch (_) {}
                 }
@@ -697,24 +710,20 @@
           console.warn("[Store] Cloud purge list failed:", e);
         }
       }
-      for (const email of TEST_EMAILS) {
+      for (const email of TEST_USER_EMAILS) {
         try {
           await backend.deleteUser(email);
         } catch (e) {}
       }
     }
 
-    for (const email of TEST_EMAILS) {
+    for (const email of TEST_USER_EMAILS) {
       fetch(`/api/auth/users/${encodeURIComponent(email)}`, { method: "DELETE" }).catch(() => {});
     }
 
-    const remaining = readStored(STORAGE.users).filter((u) => {
-      if (!u) return false;
-      const email = normalizeText(u.email);
-      const id = String(u.id || u.userId || "");
-      return !isTestEmail(email) && !id.startsWith("USR-0") && !isDemoUser(u);
-    });
+    const remaining = readStored(STORAGE.users).filter((u) => !isTestUser(u));
     setCollection(STORAGE.users, remaining);
+    localStorage.removeItem("parkrUsers");
     return true;
   }
 

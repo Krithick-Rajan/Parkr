@@ -307,15 +307,8 @@
 
       const purgeTestUsersBtn = event.target.closest("#purgeTestUsersBtn");
       if (purgeTestUsersBtn) {
-        const result = await Parkr.openFormDialog({
-          title: "Purge Test Users",
-          description: "Permanently delete all predefined and test users from Cloud Firestore and local storage?",
-          submitLabel: "Purge Users",
-          submitClass: "btn btn-danger",
-          fields: []
-        });
-        if (!result) return;
         setTableLoading(document.querySelector("#adminUserRows"), 6, "Purging test users...");
+        try { localStorage.removeItem("parkrUsers"); } catch (_) {}
         await ParkrStore.purgeTestUsers();
         await ParkrStore.listUsers(true);
         await renderUsers();
@@ -325,22 +318,29 @@
 
       const deleteUserButton = event.target.closest("[data-delete-user]");
       if (deleteUserButton) {
+        const userName = deleteUserButton.dataset.userName || "this user";
         const result = await Parkr.openFormDialog({
           title: "Delete user",
-          description: "Delete " + (deleteUserButton.dataset.userName || "this user") + " from Parkr?",
+          description: "Permanently delete " + userName + " from Parkr?",
           submitLabel: "Delete user",
           submitClass: "btn btn-danger",
           fields: []
         });
         if (!result) return;
+
         const targetId = deleteUserButton.dataset.deleteUser;
         const targetEmail = deleteUserButton.dataset.userEmail;
-        await ParkrStore.deleteUser(targetId);
+
+        // Immediately remove row from DOM for instant feedback
+        const tr = deleteUserButton.closest("tr");
+        if (tr) tr.remove();
+
+        if (targetId) await ParkrStore.deleteUser(targetId);
         if (targetEmail && targetEmail !== targetId) {
           await ParkrStore.deleteUser(targetEmail);
         }
         Parkr.showToast("User deleted");
-        refreshPage();
+        await renderUsers();
         return;
       }
 
@@ -386,6 +386,20 @@
   document.addEventListener("DOMContentLoaded", () => {
     const page = document.body.dataset.page;
     if (!page || !page.startsWith("admin")) return;
+
+    // Purge any lingering legacy test accounts from localStorage
+    try {
+      const raw = JSON.parse(localStorage.getItem("parkrUsers") || "[]");
+      if (Array.isArray(raw)) {
+        const clean = raw.filter((u) => {
+          const email = String((u || {}).email || "").toLowerCase();
+          const id = String((u || {}).id || (u || {}).userId || "");
+          return !email.endsWith("@parkr.com") && !/^USR-00[1-9]$/i.test(id) && !email.includes("test");
+        });
+        localStorage.setItem("parkrUsers", JSON.stringify(clean));
+      }
+    } catch (_) {}
+
     bindAdminActions();
     if (page === "admin-hub") {
       routeView();
