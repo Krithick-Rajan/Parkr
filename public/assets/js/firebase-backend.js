@@ -102,10 +102,32 @@ import { firebaseConfig, isFirebaseConfigured } from "../../firebase/firebase-co
     }
 
     async function deleteRecord(collectionName, id) {
+      if (!id) return true;
       try {
         await firestoreSdk.deleteDoc(firestoreSdk.doc(db, collectionName, id));
-      } catch (err) {
-        console.warn(`[Firestore] Cloud delete from '${collectionName}' failed:`, err);
+      } catch (err) {}
+
+      // For users collection, also ensure documents with matching email or userId are deleted
+      if (collectionName === "users") {
+        try {
+          const colRef = firestoreSdk.collection(db, "users");
+          if (String(id).includes("@")) {
+            const qEmail = firestoreSdk.query(colRef, firestoreSdk.where("email", "==", String(id).trim().toLowerCase()));
+            const snap = await firestoreSdk.getDocs(qEmail);
+            for (const d of snap.docs) {
+              await firestoreSdk.deleteDoc(d.ref);
+            }
+          }
+          if (String(id).startsWith("USR-")) {
+            const qUid = firestoreSdk.query(colRef, firestoreSdk.where("userId", "==", id));
+            const snapUid = await firestoreSdk.getDocs(qUid);
+            for (const d of snapUid.docs) {
+              await firestoreSdk.deleteDoc(d.ref);
+            }
+          }
+        } catch (err) {
+          console.warn(`[Firestore] Deep delete query failed:`, err);
+        }
       }
       return true;
     }

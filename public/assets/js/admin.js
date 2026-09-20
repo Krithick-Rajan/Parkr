@@ -52,7 +52,7 @@
             <td class="inline-actions">
               <button class="btn btn-secondary btn-small" type="button" data-user-action="approved" data-user-id="${attr(userId)}"${status === "approved" ? " disabled" : ""}>${approveLabel}</button>
               <button class="btn btn-secondary btn-small" type="button" data-user-action="${attr(blockAction)}" data-user-id="${attr(userId)}"${isSelf ? " disabled" : ""}>${h(blockLabel)}</button>
-              <button class="btn btn-danger btn-small" type="button" data-delete-user="${attr(userId)}" data-user-name="${attr(user.name)}"${isSelf ? " disabled" : ""}>Delete</button>
+              <button class="btn btn-danger btn-small" type="button" data-delete-user="${attr(userId)}" data-user-name="${attr(user.name)}" data-user-email="${attr(user.email)}"${isSelf ? " disabled" : ""}>Delete</button>
             </td>
           </tr>
         `;
@@ -296,6 +296,33 @@
         return;
       }
 
+      const refreshUsersBtn = event.target.closest("#refreshUsersBtn");
+      if (refreshUsersBtn) {
+        setTableLoading(document.querySelector("#adminUserRows"), 6, "Syncing from Cloud...");
+        await ParkrStore.listUsers(true);
+        await renderUsers();
+        Parkr.showToast("Users synced from cloud");
+        return;
+      }
+
+      const purgeTestUsersBtn = event.target.closest("#purgeTestUsersBtn");
+      if (purgeTestUsersBtn) {
+        const result = await Parkr.openFormDialog({
+          title: "Purge Test Users",
+          description: "Permanently delete all predefined and test users from Cloud Firestore and local storage?",
+          submitLabel: "Purge Users",
+          submitClass: "btn btn-danger",
+          fields: []
+        });
+        if (!result) return;
+        setTableLoading(document.querySelector("#adminUserRows"), 6, "Purging test users...");
+        await ParkrStore.purgeTestUsers();
+        await ParkrStore.listUsers(true);
+        await renderUsers();
+        Parkr.showToast("Test users purged");
+        return;
+      }
+
       const deleteUserButton = event.target.closest("[data-delete-user]");
       if (deleteUserButton) {
         const result = await Parkr.openFormDialog({
@@ -306,7 +333,12 @@
           fields: []
         });
         if (!result) return;
-        await ParkrStore.deleteUser(deleteUserButton.dataset.deleteUser);
+        const targetId = deleteUserButton.dataset.deleteUser;
+        const targetEmail = deleteUserButton.dataset.userEmail;
+        await ParkrStore.deleteUser(targetId);
+        if (targetEmail && targetEmail !== targetId) {
+          await ParkrStore.deleteUser(targetEmail);
+        }
         Parkr.showToast("User deleted");
         refreshPage();
         return;
