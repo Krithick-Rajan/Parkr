@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register - Parkr</title>
+  <link rel="icon" type="image/svg+xml" href="assets/images/logo/parkr-logo-orange.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/auth.css">
+  <link rel="stylesheet" href="assets/css/responsive.css">
+  <script src="assets/js/utils.js" defer></script>
+  <script src="assets/js/models.js" defer></script>
+  <script src="assets/js/store.js" defer></script>
+  <script type="module" src="assets/js/firebase-backend.js"></script>
+  <script src="assets/js/app.js" defer></script>
+  <script src="assets/js/auth.js" defer></script>
+</head>
+<body class="auth-page" data-auth-page="register">
+  <main class="auth-shell">
+    <section class="auth-panel" aria-label="Parkr parking preview">
+      <div class="auth-panel-content">
+        <span class="eyebrow">Join Parkr</span>
+        <h1>Turn parking stress into a quick confirmed booking.</h1>
+        <p>Create a driver, owner, or admin account. The selected role controls which workspace opens after registration.</p>
+      </div>
+    </section>
+
+    <section class="auth-card" aria-labelledby="register-title">
+      <a class="auth-brand" href="index.html">
+        <span class="brand-logo"><img src="assets/images/logo/parkr-logo.png" alt="Parkr logo"></span>
+        <span class="brand-title"><strong>Parkr</strong><span>Find. Park. Go.</span></span>
+      </a>
+      <h2 id="register-title">Create account</h2>
+      <p>Set up your profile and continue to the matching workspace.</p>
+
+      <form class="auth-form" id="registerForm">
+        <div class="field">
+          <label for="registerName">Full name</label>
+          <input id="registerName" name="name" autocomplete="name" required placeholder="Your name">
+        </div>
+        <div class="field">
+          <label for="registerEmail">Email address</label>
+          <input id="registerEmail" name="email" type="email" autocomplete="email" required placeholder="name@example.com">
+        </div>
+        <div class="field">
+          <label for="registerPhone">Phone number</label>
+          <input id="registerPhone" name="phone" type="tel" autocomplete="tel" placeholder="+91 98765 43210">
+        </div>
+        <div class="field">
+          <label for="registerPassword">Password</label>
+          <input id="registerPassword" name="password" type="password" autocomplete="new-password" required minlength="6" placeholder="Minimum 6 characters">
+        </div>
+        <fieldset class="field">
+          <legend class="form-label">Register as</legend>
+          <div class="role-grid">
+            <label class="role-option"><input type="radio" name="role" value="driver" checked><span>Driver</span></label>
+            <label class="role-option"><input type="radio" name="role" value="owner"><span>Owner</span></label>
+            <label class="role-option"><input type="radio" name="role" value="admin"><span>Admin</span></label>
+          </div>
+        </fieldset>
+        <button class="btn btn-primary btn-block" type="submit">Register</button>
+        <p class="sr-status muted" data-auth-message aria-live="polite"></p>
+      </form>
+
+      <div class="auth-links">
+        <a href="index.html">Back home</a>
+        <span>Already registered? <a href="login.html">Login</a></span>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

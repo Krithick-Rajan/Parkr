@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parkr - Find. Park. Go.</title>
+  <link rel="icon" type="image/svg+xml" href="assets/images/logo/parkr-logo-orange.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/responsive.css">
+  <script src="assets/js/utils.js" defer></script>
+  <script src="assets/js/models.js" defer></script>
+  <script src="assets/js/store.js" defer></script>
+  <script type="module" src="assets/js/firebase-backend.js"></script>
+  <script src="assets/js/home.js" defer></script>
+  <script src="assets/js/app.js" defer></script>
+</head>
+<body>
+  <nav class="navbar" aria-label="Primary navigation">
+    <a class="brand" href="index.html" aria-label="Parkr home">
+      <span class="brand-logo"><img src="assets/images/logo/parkr-logo.png" alt="Parkr logo"></span>
+      <span class="brand-title"><strong>Parkr</strong><span>Find. Park. Go.</span></span>
+    </a>
+    <button class="mobile-menu-button" type="button" data-menu-toggle aria-label="Open navigation">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="nav-right">
+      <a href="#featured">Parking</a>
+      <a href="#how">How it works</a>
+      <a href="login.html">Login</a>
+      <a class="btn btn-primary" href="register.html">Register</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="hero-content">
+      <span class="eyebrow">Live parking availability for busy places</span>
+      <h1><span class="hero-title-mark">Find. Park. Go.</span></h1>
+      <p>Parkr connects drivers with verified parking owners, quick bookings, fair hourly rates, and clean dashboards for every role.</p>
+
+      <form class="search-bar" action="driver.html">
+        <label class="visually-hidden" for="home-location">Location</label>
+        <input id="home-location" name="location" placeholder="Search approved parking slots">
+        <label class="visually-hidden" for="home-vehicle">Vehicle</label>
+        <select id="home-vehicle" name="vehicle">
+          <option value="">Vehicle</option>
+          <option>Car</option>
+          <option>Bike</option>
+          <option>Van</option>
+        </select>
+        <label class="visually-hidden" for="home-date">Date</label>
+        <input id="home-date" name="date" type="date">
+        <button class="btn btn-primary" type="submit">Search Parking</button>
+      </form>
+
+      <div class="stats" aria-label="Parkr platform statistics">
+        <div class="stat-card"><strong>Nearby</strong><span>Smart search</span></div>
+        <div class="stat-card"><strong>Verified</strong><span>Admin approved</span></div>
+        <div class="stat-card"><strong>Live</strong><span>Owner listings</span></div>
+        <div class="stat-card"><strong>Role based</strong><span>Clean access</span></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="section" id="featured">
+      <div class="container">
+        <div class="section-header">
+          <span class="eyebrow">Featured spaces</span>
+          <h2>Verified parking near you</h2>
+          <p>Only owner-created slots approved by the admin appear here.</p>
+        </div>
+        <div class="cards" id="homeSlots" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="section" id="how">
+      <div class="container">
+        <div class="section-header">
+          <span class="eyebrow">Simple flow</span>
+          <h2>Built for drivers, owners, and admins</h2>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card"><div class="card-body"><h3>Drivers search</h3><p class="muted">Filter by location, vehicle type, date, and price before reserving a slot.</p></div></article>
+          <article class="feature-card"><div class="card-body"><h3>Owners earn</h3><p class="muted">List spaces, manage bookings, and track earnings from one dashboard.</p></div></article>
+          <article class="feature-card"><div class="card-body"><h3>Admins verify</h3><p class="muted">Approve users, verify parking slots, and monitor reports across Parkr.</p></div></article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>Copyright <span data-year></span> Parkr. Find. Park. Go.</p>
+    </div>
+  </footer>
+</body>
+</html>
