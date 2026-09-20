@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Parkr Marketplace Collections
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+    match /parkingSlots/{slotId} {
+      allow read, write: if true;
+    }
+    match /bookings/{bookingId} {
+      allow read, write: if true;
+    }
+    match /payments/{paymentId} {
+      allow read, write: if true;
+    }
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

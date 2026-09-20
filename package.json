@@ -1,0 +1,27 @@
+{
+  "name": "parkr",
+  "version": "1.0.0",
+  "description": "High-efficiency parking slot sharing marketplace.",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node backend/server.js",
+    "legacy-dev": "node scripts/dev-server.cjs"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "nodemailer": "^6.10.0"
+  },
+  "keywords": [
+    "parking",
+    "firebase",
+    "marketplace",
+    "express",
+    "leaflet"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
