@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Owner Workspace - Parkr</title>
+  <link rel="icon" type="image/svg+xml" href="assets/images/logo/parkr-logo-orange.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com">
+  <link rel="stylesheet" href="assets/css/style.css?v=2">
+  <link rel="stylesheet" href="assets/css/components.css?v=2">
+  <link rel="stylesheet" href="assets/css/dashboard.css?v=2">
+  <link rel="stylesheet" href="assets/css/responsive.css?v=2">
+  <script src="assets/js/utils.js?v=2" defer></script>
+  <script src="assets/js/models.js?v=2" defer></script>
+  <script src="assets/js/store.js?v=2" defer></script>
+  <script type="module" src="assets/js/firebase-backend.js?v=2"></script>
+  <script src="assets/js/app.js?v=2" defer></script>
+  <script src="assets/js/owner.js?v=2" defer></script>
+  <style>
+    .view-section { display: none; }
+    .view-section.active { display: block; }
+
+    /* Parkr Themed Photo Upload & Preview Component */
+    .photo-upload-zone {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      gap: 14px !important;
+      width: 100% !important;
+      min-height: 54px !important;
+      padding: 7px 16px 7px 8px !important;
+      background: #111827 !important;
+      border: 1.5px dashed rgba(249, 115, 22, 0.45) !important;
+      border-radius: 12px !important;
+      cursor: pointer !important;
+      transition: all 180ms ease !important;
+      user-select: none !important;
+      box-sizing: border-box !important;
+    }
+    .photo-upload-zone:hover {
+      border-color: #ea580c !important;
+      border-style: solid !important;
+      background: #1e293b !important;
+      box-shadow: 0 4px 18px rgba(249, 115, 22, 0.2) !important;
+    }
+    .upload-zone-left {
+      display: flex !important;
+      align-items: center !important;
+      gap: 14px !important;
+      flex: 1 !important;
+      min-width: 0 !important;
+    }
+    .upload-btn-theme {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 8px !important;
+      min-height: 38px !important;
+      padding: 7px 18px !important;
+      border-radius: 10px !important;
+      background: linear-gradient(135deg, #f59e0b, #ea580c) !important;
+      color: #ffffff !important;
+      font-family: inherit !important;
+      font-size: 0.88rem !important;
+      font-weight: 700 !important;
+      box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35) !important;
+      transition: all 150ms ease !important;
+      flex-shrink: 0 !important;
+      cursor: pointer !important;
+    }
+    .photo-upload-zone:hover .upload-btn-theme {
+      transform: translateY(-1px) !important;
+      box-shadow: 0 6px 18px rgba(249, 115, 22, 0.45) !important;
+    }
+    .upload-hint-text {
+      color: #94a3b8 !important;
+      font-size: 0.85rem !important;
+      font-weight: 400 !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      flex: 1 !important;
+    }
+    .upload-hint-text.has-file {
+      color: #38bdf8 !important;
+      font-weight: 500 !important;
+    }
+    .photo-preview-card {
+      margin-top: 10px !important;
+      background: #0f172a !important;
+      border: 1px solid rgba(255, 255, 255, 0.12) !important;
+      border-radius: 14px !important;
+      overflow: hidden !important;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35) !important;
+    }
+    .preview-header {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      padding: 10px 14px !important;
+      background: rgba(30, 41, 59, 0.85) !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+    .preview-info {
+      display: flex !important;
+      align-items: center !important;
+      gap: 8px !important;
+      font-size: 0.84rem !important;
+      overflow: hidden !important;
+    }
+    .preview-name {
+      color: #f8fafc !important;
+      font-weight: 500 !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      max-width: 220px !important;
+    }
+    .preview-size {
+      color: #94a3b8 !important;
+      font-size: 0.78rem !important;
+      font-weight: 400 !important;
+    }
+    .remove-photo-btn {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 5px !important;
+      background: rgba(239, 68, 68, 0.16) !important;
+      border: 1px solid rgba(239, 68, 68, 0.4) !important;
+      color: #f87171 !important;
+      font-family: inherit !important;
+      font-size: 0.8rem !important;
+      font-weight: 600 !important;
+      padding: 5px 12px !important;
+      border-radius: 8px !important;
+      cursor: pointer !important;
+      transition: all 160ms ease !important;
+    }
+    .remove-photo-btn:hover {
+      background: #ef4444 !important;
+      color: #ffffff !important;
+      border-color: #ef4444 !important;
+      box-shadow: 0 2px 10px rgba(239, 68, 68, 0.4) !important;
+    }
+    .preview-media {
+      width: 100% !important;
+      max-height: 220px !important;
+      background: #020617 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      overflow: hidden !important;
+    }
+    .preview-media img {
+      width: 100% !important;
+      height: 200px !important;
+      object-fit: cover !important;
+      display: block !important;
+    }
+  </style>
+</head>
+<body class="dashboard-body" data-role="owner" data-page="owner-hub">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="sidebar-brand" href="index.html" aria-label="Parkr home">
+        <span class="brand-logo"><img src="assets/images/logo/parkr-logo.png" alt="Parkr logo"></span>
+        <span class="brand-title"><strong>Parkr</strong><span>Owner</span></span>
+      </a>
+      <nav class="sidebar-nav" aria-label="Owner navigation">
+        <a href="#dashboard" class="sidebar-link active" data-nav="dashboard">Dashboard</a>
+        <a href="#add-slot" class="sidebar-link" data-nav="add-slot">Add Slot</a>
+        <a href="#manage-slots" class="sidebar-link" data-nav="manage-slots">Manage Slots</a>
+        <a href="#bookings" class="sidebar-link" data-nav="bookings">Bookings</a>
+        <a href="#profile" class="sidebar-link" data-nav="profile">Profile</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a class="btn btn-secondary" href="index.html">Home</a>
+        <button class="btn btn-ghost" type="button" data-signout>Logout</button>
+      </div>
+    </aside>
+
+    <main class="main-panel">
+      <!-- 1. DASHBOARD VIEW -->
+      <div class="view-section active" id="view-dashboard">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Owner workspace</span>
+            <h1>Welcome, <span data-user-name>Owner</span>.</h1>
+            <p>Monitor slot availability, earnings, and new reservations.</p>
+          </div>
+          <a class="btn btn-primary" href="#add-slot">Add Slot</a>
+        </header>
+
+        <section class="stat-grid" aria-label="Owner statistics">
+          <article class="metric-card"><span>Total slots</span><strong data-owner-slots>0</strong></article>
+          <article class="metric-card"><span>Bookings</span><strong data-owner-bookings>0</strong></article>
+          <article class="metric-card"><span>Earnings</span><strong data-owner-earnings>Rs. 0</strong></article>
+          <article class="metric-card"><span>Rating</span><strong data-owner-rating>0</strong></article>
+        </section>
+
+        <section class="content-grid section">
+          <article class="data-panel">
+            <div class="panel-header">
+              <div><h2>Recent bookings</h2><p class="muted">Latest reservations across your parking slots.</p></div>
+              <a class="btn btn-secondary btn-small" href="#bookings">View All</a>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>ID</th><th>Driver</th><th>Slot</th><th>Date</th><th>Amount</th><th>Payment</th></tr></thead>
+                <tbody id="ownerRecentBookings"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <aside class="data-panel">
+            <h2>Occupancy</h2>
+            <div class="progress-list" id="ownerOccupancy"></div>
+          </aside>
+        </section>
+      </div>
+
+      <!-- 2. ADD SLOT VIEW -->
+      <div class="view-section" id="view-add-slot">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">New listing</span>
+            <h1>Add parking slot</h1>
+            <p>Submit parking details for admin verification before it goes live.</p>
+          </div>
+        </header>
+
+        <section class="two-column">
+          <form class="data-panel stack" id="addSlotForm">
+            <h2>Slot details</h2>
+            <div class="form-grid">
+              <div class="field"><label for="slotName">Parking name</label><input id="slotName" name="slotName" required placeholder="Parking name"></div>
+              <div class="field"><label for="slotVehicle">Vehicle type</label><select id="slotVehicle" name="vehicle" required><option>Car</option><option>Bike</option><option>Van</option></select></div>
+              <div class="field"><label for="slotPrice">Price per hour</label><input id="slotPrice" name="price" type="number" min="1" required placeholder="40"></div>
+              <div class="field"><label for="slotCount">Total slots</label><input id="slotCount" name="total" type="number" min="1" required placeholder="20"></div>
+              <div class="field"><label for="slotOpen">Opening time</label><input id="slotOpen" name="open" type="time" required></div>
+              <div class="field"><label for="slotClose">Closing time</label><input id="slotClose" name="close" type="time" required></div>
+            </div>
+            <div class="field"><label for="slotAddress">Full address</label><textarea id="slotAddress" name="address" required placeholder="Street, landmark, city"></textarea></div>
+            <div class="field">
+              <label for="slotPhoto">Slot photo <span class="muted font-normal" style="font-weight: 400; font-size: 0.85rem;">(Optional)</span></label>
+              <input id="slotPhoto" name="photo" type="file" accept="image/*" style="display: none !important;">
+              
+              <label for="slotPhoto" class="photo-upload-zone" id="photoUploadZone" title="Click to browse image">
+                <div class="upload-zone-left">
+                  <span class="upload-btn-theme">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Choose File
+                  </span>
+                  <span class="upload-hint-text" id="slotPhotoFilename">No file chosen &bull; PNG, JPG, WEBP</span>
+                </div>
+              </label>
+
+              <!-- Live Photo Preview Card -->
+              <div id="photoPreviewContainer" class="photo-preview-card" style="display: none;">
+                <div class="preview-header">
+                  <div class="preview-info">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span id="previewFilename" class="preview-name">photo.jpg</span>
+                    <span id="previewFilesize" class="preview-size">1.2 MB</span>
+                  </div>
+                  <button type="button" id="removePhotoBtn" class="remove-photo-btn">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    Remove
+                  </button>
+                </div>
+                <div class="preview-media">
+                  <img id="photoPreview" src="" alt="Slot Preview">
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-primary" type="submit">Submit for Verification</button>
+          </form>
+
+          <aside class="data-panel">
+            <h2>Verification checklist</h2>
+            <div class="list">
+              <div class="list-row"><span>Clear parking name and landmark</span><span class="status approved">Required</span></div>
+              <div class="list-row"><span>Accurate hourly price</span><span class="status approved">Required</span></div>
+              <div class="list-row"><span>Entry timing and capacity</span><span class="status approved">Required</span></div>
+              <div class="list-row"><span>Slot photo storage & verification</span><span class="status approved">Supported</span></div>
+            </div>
+          </aside>
+        </section>
+      </div>
+
+      <!-- 3. MANAGE SLOTS VIEW -->
+      <div class="view-section" id="view-manage-slots">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Inventory</span>
+            <h1>Manage parking slots</h1>
+            <p>Edit pricing, availability, and verification status.</p>
+          </div>
+          <a class="btn btn-primary" href="#add-slot">Add Slot</a>
+        </header>
+
+        <section class="data-panel">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>ID</th><th>Name</th><th>Vehicle</th><th>Rate</th><th>Available</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody id="ownerSlotRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- 4. BOOKINGS VIEW -->
+      <div class="view-section" id="view-bookings">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Reservations</span>
+            <h1>Owner bookings</h1>
+            <p>Track driver reservations and payment status for your slots.</p>
+          </div>
+        </header>
+
+        <section class="data-panel">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>ID</th><th>Driver</th><th>Slot</th><th>Date</th><th>Amount</th><th>Payment</th></tr></thead>
+              <tbody id="ownerBookingRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- 5. PROFILE VIEW -->
+      <div class="view-section" id="view-profile">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Owner account</span>
+            <h1>Profile settings</h1>
+            <p>Manage business and contact details shown to admins.</p>
+          </div>
+          <div class="user-chip"><span class="avatar" data-avatar>OU</span><span data-user-email>Email</span></div>
+        </header>
+
+        <section class="two-column">
+          <form class="data-panel stack" id="ownerProfileForm">
+            <h2>Business information</h2>
+            <div class="form-grid">
+              <div class="field"><label for="ownerName">Owner name</label><input id="ownerName" name="name" required></div>
+              <div class="field"><label for="ownerEmail">Email</label><input id="ownerEmail" name="email" type="email" required></div>
+              <div class="field"><label for="ownerPhone">Phone</label><input id="ownerPhone" name="phone" type="tel"></div>
+              <div class="field"><label for="businessName">Business name</label><input id="businessName" name="business" placeholder="Your business name"></div>
+            </div>
+            <button class="btn btn-primary" type="submit">Save Profile</button>
+          </form>
+          <aside class="data-panel">
+            <h2>Verification</h2>
+            <div class="summary-strip">
+              <div class="summary-item"><span>Status</span><strong data-owner-profile-status>Active</strong></div>
+              <div class="summary-item"><span>Slots live</span><strong data-owner-profile-live>0</strong></div>
+              <div class="summary-item"><span>Pending</span><strong data-owner-profile-pending>0</strong></div>
+            </div>
+          </aside>
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

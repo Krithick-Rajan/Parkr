@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Workspace - Parkr</title>
+  <link rel="icon" type="image/svg+xml" href="assets/images/logo/parkr-logo-orange.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/dashboard.css">
+  <link rel="stylesheet" href="assets/css/responsive.css">
+  <script src="assets/js/utils.js" defer></script>
+  <script src="assets/js/models.js" defer></script>
+  <script src="assets/js/store.js" defer></script>
+  <script type="module" src="assets/js/firebase-backend.js"></script>
+  <script src="assets/js/app.js" defer></script>
+  <script src="assets/js/admin.js" defer></script>
+  <style>
+    .view-section { display: none; }
+    .view-section.active { display: block; }
+  </style>
+</head>
+<body class="dashboard-body" data-role="admin" data-page="admin-hub">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="sidebar-brand" href="index.html" aria-label="Parkr home">
+        <span class="brand-logo"><img src="assets/images/logo/parkr-logo.png" alt="Parkr logo"></span>
+        <span class="brand-title"><strong>Parkr</strong><span>Admin</span></span>
+      </a>
+      <nav class="sidebar-nav" aria-label="Admin navigation">
+        <a href="#dashboard" class="sidebar-link active" data-nav="dashboard">Dashboard</a>
+        <a href="#manage-users" class="sidebar-link" data-nav="manage-users">Manage Users</a>
+        <a href="#verify-slots" class="sidebar-link" data-nav="verify-slots">Verify Slots</a>
+        <a href="#manage-bookings" class="sidebar-link" data-nav="manage-bookings">Bookings</a>
+        <a href="#reports" class="sidebar-link" data-nav="reports">Reports</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a class="btn btn-secondary" href="index.html">Home</a>
+        <button class="btn btn-ghost" type="button" data-signout>Logout</button>
+      </div>
+    </aside>
+
+    <main class="main-panel">
+      <!-- 1. DASHBOARD VIEW -->
+      <div class="view-section active" id="view-dashboard">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Admin control</span>
+            <h1>Platform overview</h1>
+            <p>Review users, parking inventory, bookings, and revenue signals.</p>
+          </div>
+          <div class="user-chip"><span class="avatar" data-avatar>AD</span><span data-user-name>Admin</span></div>
+        </header>
+
+        <section class="stat-grid" aria-label="Admin statistics">
+          <article class="metric-card"><span>Users</span><strong data-admin-users>0</strong></article>
+          <article class="metric-card"><span>Slots</span><strong data-admin-slots>0</strong></article>
+          <article class="metric-card"><span>Bookings</span><strong data-admin-bookings>0</strong></article>
+          <article class="metric-card"><span>Revenue</span><strong data-admin-revenue>Rs. 0</strong></article>
+        </section>
+
+        <section class="content-grid section">
+          <article class="data-panel">
+            <div class="panel-header">
+              <div><h2>Action center</h2><p class="muted">Important admin tasks and payment signals.</p></div>
+              <a class="btn btn-secondary btn-small" href="#reports">Open Reports</a>
+            </div>
+            <div class="summary-strip">
+              <div class="summary-item"><span>Pending slots</span><strong data-admin-pending-slots>0</strong></div>
+              <div class="summary-item"><span>Paid bookings</span><strong data-admin-paid-bookings>0</strong></div>
+              <div class="summary-item"><span>Pending payments</span><strong data-admin-pending-payments>0</strong></div>
+            </div>
+            <div class="list admin-action-list" id="adminActionCenter" aria-live="polite">
+              <div class="empty-state">
+                <div>
+                  <h3>Action Center</h3>
+                  <p>All parking slots, bookings, and accounts are up to date.</p>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <aside class="data-panel">
+            <h2>Pending slots</h2>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>ID</th><th>Name</th><th>Vehicle</th><th>Rate</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody id="adminPendingSlotRows"></tbody>
+              </table>
+            </div>
+          </aside>
+        </section>
+      </div>
+
+      <!-- 2. MANAGE USERS VIEW -->
+      <div class="view-section" id="view-manage-users">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Users</span>
+            <h1>Manage users</h1>
+            <p>Review drivers, owners, and admin accounts.</p>
+          </div>
+        </header>
+
+        <section class="data-panel">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody id="adminUserRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- 3. VERIFY SLOTS VIEW -->
+      <div class="view-section" id="view-verify-slots">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Slot verification</span>
+            <h1>Verify parking slots</h1>
+            <p>Approve or reject owner listings before they appear in driver search.</p>
+          </div>
+        </header>
+
+        <section class="data-panel">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>ID</th><th>Name</th><th>Vehicle</th><th>Rate</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody id="verifySlotRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- 4. MANAGE BOOKINGS VIEW -->
+      <div class="view-section" id="view-manage-bookings">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Bookings</span>
+            <h1>Manage bookings</h1>
+            <p>Monitor all reservations and payment statuses.</p>
+          </div>
+        </header>
+
+        <section class="data-panel">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>ID</th><th>Driver</th><th>Slot</th><th>Date</th><th>Amount</th><th>Payment</th><th>Action</th></tr></thead>
+              <tbody id="adminBookingRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- 5. REPORTS VIEW -->
+      <div class="view-section" id="view-reports">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Reports</span>
+            <h1>Platform reports</h1>
+            <p>High-level metrics for operations and growth tracking.</p>
+          </div>
+        </header>
+
+        <section class="content-grid">
+          <article class="data-panel">
+            <h2>Revenue by slot</h2>
+            <div class="progress-list" id="adminRevenueRows"></div>
+          </article>
+
+          <aside class="data-panel">
+            <h2>Operational health</h2>
+            <div class="summary-strip">
+              <div class="summary-item"><span>Users</span><strong data-report-users>0</strong></div>
+              <div class="summary-item"><span>Slots</span><strong data-report-slots>0</strong></div>
+              <div class="summary-item"><span>Bookings</span><strong data-report-bookings>0</strong></div>
+            </div>
+            <div class="divider"></div>
+            <div class="summary-strip">
+              <div class="summary-item"><span>Revenue</span><strong data-report-revenue>Rs. 0</strong></div>
+              <div class="summary-item"><span>Pending</span><strong data-report-pending>0</strong></div>
+              <div class="summary-item"><span>Approved</span><strong data-report-approved>0</strong></div>
+            </div>
+          </aside>
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

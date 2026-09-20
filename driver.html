@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Driver Dashboard - Parkr</title>
+  <link rel="icon" type="image/svg+xml" href="assets/images/logo/parkr-logo-orange.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/dashboard.css">
+  <link rel="stylesheet" href="assets/css/responsive.css">
+  <script src="assets/js/utils.js" defer></script>
+  <script src="assets/js/models.js" defer></script>
+  <script src="assets/js/store.js" defer></script>
+  <script type="module" src="assets/js/firebase-backend.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="assets/js/app.js" defer></script>
+  <script src="assets/js/driver.js" defer></script>
+  <style>
+    .view-section { display: none; }
+    .view-section.active { display: block; }
+  </style>
+</head>
+<body class="dashboard-body" data-role="driver" data-page="driver-hub">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="sidebar-brand" href="index.html" aria-label="Parkr home">
+        <span class="brand-logo"><img src="assets/images/logo/parkr-logo.png" alt="Parkr logo"></span>
+        <span class="brand-title"><strong>Parkr</strong><span>Driver</span></span>
+      </a>
+      <nav class="sidebar-nav" aria-label="Driver navigation">
+        <a href="#dashboard" class="sidebar-link active" data-nav="dashboard">Dashboard</a>
+        <a href="#search" class="sidebar-link" data-nav="search">Search Parking</a>
+        <a href="#history" class="sidebar-link" data-nav="history">Booking History</a>
+        <a href="#profile" class="sidebar-link" data-nav="profile">Profile</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a class="btn btn-secondary" href="index.html">Home</a>
+        <button class="btn btn-ghost" type="button" data-signout>Logout</button>
+      </div>
+    </aside>
+
+    <main class="main-panel">
+      <!-- 1. DASHBOARD VIEW -->
+      <div class="view-section active" id="view-dashboard">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Driver workspace</span>
+            <h1>Good to see you, <span data-user-name>Driver</span>.</h1>
+            <p>Track active reservations, favorite locations, and recent parking spend.</p>
+          </div>
+          <div class="user-chip"><span class="avatar" data-avatar>DU</span><span data-user-role>driver</span></div>
+        </header>
+
+        <section class="stat-grid" aria-label="Driver statistics">
+          <article class="metric-card"><span>Active bookings</span><strong data-driver-active>0</strong></article>
+          <article class="metric-card"><span>Total spend</span><strong data-driver-spend>Rs. 0</strong></article>
+          <article class="metric-card"><span>Time saved</span><strong data-driver-saved>0 hrs</strong></article>
+          <article class="metric-card"><span>Favorites</span><strong data-driver-favorites>0</strong></article>
+        </section>
+
+        <section class="content-grid section">
+          <article class="data-panel">
+            <div class="panel-header">
+              <div>
+                <h2>Upcoming bookings</h2>
+                <p class="muted">Your upcoming paid reservations.</p>
+              </div>
+              <a class="btn btn-primary btn-small" href="#search">Find Slot</a>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>ID</th><th>Slot</th><th>Date</th><th>Time</th><th>Amount</th><th>Payment</th></tr></thead>
+                <tbody id="driverUpcoming"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <aside class="data-panel">
+            <h2>Quick picks</h2>
+            <div class="list" id="driverQuickPicks"></div>
+          </aside>
+        </section>
+      </div>
+
+      <!-- 2. SEARCH VIEW -->
+      <div class="view-section" id="view-search">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Find parking</span>
+            <h1>Search available slots</h1>
+            <p>Filter by area, vehicle type, date, and hourly budget.</p>
+          </div>
+          <div class="user-chip"><span class="avatar" data-avatar>DU</span><span data-user-name>Driver</span></div>
+        </header>
+
+        <form class="filter-bar" id="driverSearchForm">
+          <div class="field"><label for="location">Location</label><input id="location" name="location" placeholder="Search approved parking slots"></div>
+          <div class="field"><label for="vehicle">Vehicle</label><select id="vehicle" name="vehicle"><option value="">Any vehicle</option><option>Car</option><option>Bike</option><option>Van</option></select></div>
+          <div class="field"><label for="date">Date</label><input id="date" name="date" type="date"></div>
+          <div class="field"><label for="price">Max price</label><select id="price" name="price"><option value="9999">Any price</option><option value="40">Rs. 40</option><option value="50">Rs. 50</option><option value="60">Rs. 60</option></select></div>
+          <button class="btn btn-primary" type="submit">Search</button>
+        </form>
+
+        <div class="map-wrapper">
+          <div class="map-header">
+            <h3><span class="map-dot"></span> Live Parking Map (OpenStreetMap)</h3>
+            <span class="map-badge">100% Free · Real-time Pins</span>
+          </div>
+          <div id="searchMap" class="map-canvas"></div>
+        </div>
+
+        <section class="slot-grid" id="slotResults" aria-live="polite" style="margin-top: 24px;"></section>
+      </div>
+
+      <!-- 3. DETAILS VIEW -->
+      <div class="view-section" id="view-details">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Parking details</span>
+            <h1 data-slot-name>Parking slot</h1>
+            <p data-slot-address>Address</p>
+          </div>
+          <a class="btn btn-primary" data-booking-link href="#booking">Book Slot</a>
+        </header>
+
+        <section class="two-column">
+          <article class="stack">
+            <div class="detail-hero"><div class="detail-hero-content"><h2 data-slot-name>Parking slot</h2><p class="muted" data-slot-address>Address</p></div></div>
+            <div class="data-panel">
+              <h2>Amenities</h2>
+              <p class="muted">Verified owner details and facilities for a smoother arrival.</p>
+              <div class="slot-meta" id="slotFeatures"></div>
+            </div>
+          </article>
+
+          <aside class="data-panel">
+            <h2>Booking summary</h2>
+            <div class="summary-strip">
+              <div class="summary-item"><span>Rate</span><strong data-slot-price>Rs. 0 / hour</strong></div>
+              <div class="summary-item"><span>Rating</span><strong data-slot-rating>0 rating</strong></div>
+              <div class="summary-item"><span>Availability</span><strong data-slot-available>0 slots</strong></div>
+            </div>
+            <div style="margin-top: 16px;">
+              <span class="eyebrow" style="margin-bottom: 6px; display: block;">Interactive Pin</span>
+              <div id="slotDetailMap" class="map-canvas-small"></div>
+            </div>
+            <div class="divider"></div>
+            <p class="muted">Carry your vehicle number and arrive within the reserved time window. The owner can verify your booking from their dashboard.</p>
+            <div class="inline-actions" style="margin-top:18px">
+              <a class="btn btn-primary" data-booking-link href="#booking">Continue Booking</a>
+              <a class="btn btn-secondary" href="#search">Back to Search</a>
+            </div>
+          </aside>
+        </section>
+      </div>
+
+      <!-- 4. BOOKING VIEW -->
+      <div class="view-section" id="view-booking">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Reserve slot</span>
+            <h1>Complete your booking</h1>
+            <p data-booking-address>Parking address</p>
+          </div>
+        </header>
+
+        <section class="two-column">
+          <form class="data-panel stack" id="bookingForm">
+            <h2>Booking details</h2>
+            <div class="form-grid">
+              <div class="field"><label for="vehicleNumber">Vehicle number</label><input id="vehicleNumber" name="vehicleNumber" required placeholder="KA 01 AB 1234"></div>
+              <div class="field"><label for="vehicleType">Vehicle type</label><select id="vehicleType" name="vehicleType" required><option>Car</option><option>Bike</option><option>Van</option></select></div>
+              <div class="field"><label for="bookingDate">Date</label><input id="bookingDate" name="date" type="date" required></div>
+              <div class="field"><label for="bookingTime">Start time</label><input id="bookingTime" name="time" type="time" required></div>
+              <div class="field"><label for="bookingHours">Hours</label><input id="bookingHours" name="hours" type="number" min="1" max="24" value="2" required></div>
+              <div class="field">
+                <label for="paymentMode">Payment method</label>
+                <select id="paymentMode" name="paymentMode" required>
+                  <option value="UPI">UPI (Free Instant QR)</option>
+                  <option value="Card">Card (Zero-Fee Test Card)</option>
+                  <option value="Cash">Cash on Arrival</option>
+                  <option value="Bank transfer">Bank transfer</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-primary" type="submit">Mark Paid and Book</button>
+          </form>
+
+          <aside class="data-panel">
+            <h2 data-booking-slot>Parking slot</h2>
+            <p class="muted" data-booking-address>Address</p>
+            <div class="summary-strip">
+              <div class="summary-item"><span>Rate</span><strong data-booking-rate>Rs. 0 / hour</strong></div>
+              <div class="summary-item"><span>Total</span><strong data-booking-total>Rs. 0</strong></div>
+              <div class="summary-item"><span>Payment</span><strong>Paid by driver</strong></div>
+            </div>
+            <div class="divider"></div>
+            <div class="test-card-box" id="paymentMethodDetails">
+              <span class="map-badge" style="margin-bottom: 6px; display: inline-block;">100% Free · No Trial Period</span>
+              <p style="font-size: 0.85rem; margin: 4px 0 0 0;" id="paymentDetailText">📱 <strong>UPI ID:</strong> parkr.test@upi · Instant verification</p>
+            </div>
+            <p class="muted">Your payment is verified, recorded with the booking, and emailed immediately.</p>
+          </aside>
+        </section>
+      </div>
+
+      <!-- 5. HISTORY VIEW -->
+      <div class="view-section" id="view-history">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Driver history</span>
+            <h1>Booking history</h1>
+            <p>Review upcoming, paid, and completed parking bookings.</p>
+          </div>
+          <a class="btn btn-primary" href="#search">New Booking</a>
+        </header>
+
+        <section class="data-panel">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>ID</th><th>Slot</th><th>Date</th><th>Time</th><th>Amount</th><th>Payment</th><th>Action</th></tr></thead>
+              <tbody id="bookingHistoryRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- 6. PROFILE VIEW -->
+      <div class="view-section" id="view-profile">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Driver account</span>
+            <h1>Profile settings</h1>
+            <p>Keep contact details ready for booking confirmations.</p>
+          </div>
+          <div class="user-chip"><span class="avatar" data-avatar>DU</span><span data-user-email>Email</span></div>
+        </header>
+
+        <section class="two-column">
+          <form class="data-panel stack" id="driverProfileForm">
+            <h2>Personal information</h2>
+            <div class="form-grid">
+              <div class="field"><label for="profileName">Full name</label><input id="profileName" name="name" required></div>
+              <div class="field"><label for="profileEmail">Email</label><input id="profileEmail" name="email" type="email" required></div>
+              <div class="field"><label for="profilePhone">Phone</label><input id="profilePhone" name="phone" type="tel"></div>
+              <div class="field"><label for="profileVehicle">Default vehicle</label><input id="profileVehicle" name="vehicle" placeholder="KA 01 AB 1234"></div>
+            </div>
+            <button class="btn btn-primary" type="submit">Save Profile</button>
+          </form>
+          <aside class="data-panel">
+            <h2>Account status</h2>
+            <div class="summary-strip">
+              <div class="summary-item"><span>Status</span><strong data-driver-profile-status>Active</strong></div>
+              <div class="summary-item"><span>Role</span><strong>Driver</strong></div>
+              <div class="summary-item"><span>Bookings</span><strong data-driver-profile-bookings>0</strong></div>
+            </div>
+          </aside>
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
