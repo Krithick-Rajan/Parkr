@@ -4,9 +4,11 @@
 
 <img src="public/assets/images/logo/parkr-logo-orange.svg" alt="Parkr Logo" width="180">
 
-### Connect Drivers with Verified Parking Spaces
+<h3>Connect Drivers with Verified Parking Spaces</h3>
 
+<p>
 A full-stack parking marketplace that connects drivers with parking-space owners through searchable listings, interactive maps, slot reservations, payment workflows, and administrator verification.
+</p>
 
 </div>
 
@@ -41,7 +43,7 @@ A full-stack parking marketplace that connects drivers with parking-space owners
 The platform provides three primary workspaces:
 
 - **Drivers** can search for available parking spaces, view locations on an interactive map, make reservations, and manage their bookings.
-- **Parking Owners** can publish parking spaces, upload verification images, configure pricing and availability, and manage reservations.
+- **Parking Owners** can publish parking spaces, upload parking-space images, configure pricing and availability, and manage reservations.
 - **Administrators** can verify parking listings, manage users, review bookings, and monitor platform-level information.
 
 Parkr uses a hybrid application architecture. The application can use **Firebase Authentication, Cloud Firestore, and Firebase Cloud Storage** for cloud-backed functionality while also supporting a persistent **Node.js/Express JSON data store** for local or offline development.
@@ -133,6 +135,8 @@ Access to workspace functionality should be controlled according to the authenti
 
 ## System Architecture
 
+<div align="center">
+
 ```text
                          +---------------------------+
                          |        Web Browser        |
@@ -164,6 +168,8 @@ Access to workspace functionality should be controlled according to the authenti
           | Firebase Storage     |          | Offline development  |
           +----------------------+          +----------------------+
 ```
+
+</div>
 
 ### Architecture Components
 
@@ -203,14 +209,14 @@ Access to workspace functionality should be controlled according to the authenti
 | Styling | CSS3 | Responsive user interface |
 | Client Logic | JavaScript ES6+ | Application interaction and workflows |
 | Maps | Leaflet.js | Interactive map interface |
-| Map Data | OpenStreetMap | Map tiles/data |
+| Map Data | OpenStreetMap | Map tiles and geographic data |
 | Backend | Node.js | Server-side runtime |
 | API | Express.js | REST API and routing |
 | Authentication | Firebase Authentication | User authentication |
 | Database | Cloud Firestore | Cloud NoSQL data storage |
 | File Storage | Firebase Cloud Storage | Parking-space images |
 | Local Database | JSON / Node.js | Local persistent fallback |
-| Email | Nodemailer | Booking/notification emails |
+| Email | Nodemailer | Booking and notification emails |
 | Deployment | Vercel / Firebase Hosting | Application deployment |
 | Version Control | Git / GitHub | Source-code management |
 
@@ -373,6 +379,8 @@ Use the exact variable names already defined in your project's `.env.example`.
 
 ### Driver Workflow
 
+<div align="center">
+
 ```text
 Register / Login
        |
@@ -401,7 +409,11 @@ Payment
 Booking Confirmation
 ```
 
+</div>
+
 ### Parking Owner Workflow
+
+<div align="center">
 
 ```text
 Register / Login
@@ -432,7 +444,11 @@ Administrator Verification
           Listing Available
 ```
 
+</div>
+
 ### Administrator Workflow
+
+<div align="center">
 
 ```text
 Administrator Login
@@ -452,6 +468,8 @@ Admin Dashboard
         |
         +--> Review Reports / Analytics
 ```
+
+</div>
 
 ## API Reference
 
@@ -731,16 +749,22 @@ See the `LICENSE` file for the complete license text.
 
 ## Author
 
-**Krithick Rajan**
+<div align="center">
 
-Computer Science and Engineering Student
+<h3>Krithick Rajan</h3>
 
-GitHub: [Krithick-Rajan](https://github.com/Krithick-Rajan)
+<p>Computer Science and Engineering Student</p>
+
+<p>
+<a href="https://github.com/Krithick-Rajan">GitHub — Krithick-Rajan</a>
+</p>
+
+</div>
 
 <div align="center">
 
-**Parkr — Smart Parking Slot Sharing Marketplace**
+<strong>Parkr — Smart Parking Slot Sharing Marketplace</strong>
 
-Built for efficient parking discovery, sharing, and reservation.
+<p>Built for efficient parking discovery, sharing, and reservation.</p>
 
 </div>
