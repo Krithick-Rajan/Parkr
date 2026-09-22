@@ -1,315 +1,768 @@
-# 🅿️ Parkr — Smart Parking Slot Sharing Marketplace
+# Parkr — Smart Parking Slot Sharing Marketplace
 
 <div align="center">
 
-![Parkr Logo](assets/images/logo/parkr-logo.png)
+![Parkr Logo](public\assets\images\parkr-logo-orange.svg)
 
-### Connect Drivers with Verified Parking Spaces in Real Time
-**A modern, full-stack smart parking marketplace featuring interactive Leaflet maps, role-based workspaces, real-time slot verification, instant payments, and dual cloud/offline storage.**
+### Connect Drivers with Verified Parking Spaces
 
-[![Node.js](https://img.shields.io/badge/Node.js-v18%2B-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Express.js](https://img.shields.io/badge/Express.js-4.x-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
-[![JavaScript](https://img.shields.io/badge/ES6%2B-JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/)
-[![Firebase](https://img.shields.io/badge/Firebase-v10-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
-[![Leaflet](https://img.shields.io/badge/Leaflet-v1.9-199900?style=for-the-badge&logo=leaflet&logoColor=white)](https://leafletjs.com/)
-[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
-
-[Live Demo](http://127.0.0.1:5500) • [Architecture](#-system-architecture--uml-compliance) • [Getting Started](#-getting-started) • [API Reference](#-api-endpoints)
+A full-stack parking marketplace that connects drivers with parking-space owners through searchable listings, interactive maps, slot reservations, payment workflows, and administrator verification.
 
 </div>
 
 ---
 
-## 📌 Table of Contents
+## Table of Contents
 
-- [Overview](#-overview)
-- [Key Features](#-key-features)
-- [System Architecture & UML Compliance](#-system-architecture--uml-compliance)
-- [Technology Stack](#-technology-stack)
-- [Project Directory Structure](#-project-directory-structure)
-- [Getting Started](#-getting-started)
-- [Demo Credentials](#-demo-credentials)
-- [API Endpoints](#-api-endpoints)
-- [Deployment](#-deployment)
-- [Contributing](#-contributing)
-- [License](#-license)
-
----
-
-## 🌟 Overview
-
-Urban parking congestion is a major source of wasted time, excessive fuel consumption, and traffic bottlenecks. **Parkr** bridges this gap with an intuitive two-sided marketplace where:
-- **Drivers** easily discover, navigate to, and reserve vetted parking spaces near their destination.
-- **Space Owners** monetize vacant driveways, residential plots, or commercial garages with automated bookings and photo-verified listings.
-- **Administrators** verify new listings, audit financial transactions, oversee users, and track platform-wide occupancy and revenue analytics.
-
-Parkr is designed with a **hybrid architecture**: it natively supports **Firebase (Authentication, Firestore, and Cloud Storage)** while maintaining a completely zero-config, persistent **Node.js/Express JSON database fallback** so the entire application functions flawlessly offline or without cloud API keys.
-
----
-
-## 🚀 Key Features
-
-### 🚗 1. Driver Portal (`driver.html`)
-- **Interactive OpenStreetMap / Leaflet.js**: Real-time geolocation pins, custom markers for vehicle types, and visual route preview to the destination.
-- **Smart Filtering & Search**: Find parking by city/locality, vehicle type (*Car*, *Bike*, *Van*), pricing, and operating hours.
-- **Seamless Slot Booking**: Reserve by date and duration with immediate price calculation.
-- **Multi-Modal Payment Gateway**:
-  - **UPI QR Code Simulator** (Scan & Pay with Google Pay, PhonePe, Paytm).
-  - **Zero-Fee Test Cards** with instant validation.
-  - **Cash on Arrival** payment option.
-- **Booking History & Status**: Track confirmed, ongoing, and past parking sessions with digital invoice reference numbers.
-
-### 🏢 2. Parking Owner Workspace (`owner.html`)
-- **Executive Dashboard**: Real-time performance metrics (Total Slots, Active Reservations, Lifetime Earnings, Occupancy %).
-- **Add Slot with Photo Upload**:
-  - Custom branded upload zone supporting JPG, PNG, and WEBP formats.
-  - Live client-side photo preview card with human-readable file size and instant remove/clear capability.
-  - Automatic submission to the admin approval queue.
-- **Inventory Management**: Update pricing, open/close hours, slot capacity, and toggle availability.
-- **Reservations Stream**: Monitor incoming driver reservations and track payment statuses.
-
-### 🛡️ 3. Administrator Hub (`admin.html`)
-- **System-Wide Dashboard**: High-level platform statistics (Total Users, Registered Slots, Completed Bookings, Gross Revenue).
-- **Slot Verification Queue**: Review submitted owner parking listings and photos; approve or reject with instant status propagation.
-- **User Management**: Search, filter, and inspect Driver, Owner, and Admin profiles.
-- **Booking & Audit Log**: Comprehensive, real-time ledger of all platform transactions.
-- **Analytics & Reporting**: Occupancy rates, popular zones, and revenue trends.
-
-### ⚡ 4. Robust Backend & Services (`backend/`)
-- **Modular REST API**: Clean Express.js routing architecture for slots, bookings, payments, auth, and analytics.
-- **Persistent Data Store**: Atomic file-backed JSON database engine (`backend/data/db.js`) pre-seeded with realistic Bengaluru parking spots.
-- **Automated Notifications**: Nodemailer email delivery for reservation receipts with free Ethereal virtual inbox fallback.
-- **Aggressive Caching Control**: Tuned `Cache-Control` headers for sub-millisecond response latency and immediate frontend refresh.
+- [Overview](#overview)
+- [Problem Statement](#problem-statement)
+- [Objectives](#objectives)
+- [Key Features](#key-features)
+- [User Roles](#user-roles)
+- [System Architecture](#system-architecture)
+- [Technology Stack](#technology-stack)
+- [Project Structure](#project-structure)
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+- [Environment Configuration](#environment-configuration)
+- [Application Workflow](#application-workflow)
+- [API Reference](#api-reference)
+- [Data Model](#data-model)
+- [Security](#security)
+- [Deployment](#deployment)
+- [Testing and Verification](#testing-and-verification)
+- [Future Enhancements](#future-enhancements)
+- [Contributing](#contributing)
+- [License](#license)
+- [Author](#author)
 
 ---
 
-## 📐 System Architecture & UML Compliance
+## Overview
 
-Parkr strictly implements all software engineering models specified in standard academic and industry UML/DFD specifications:
+**Parkr** is a web-based **parking slot sharing marketplace** designed to make parking-space discovery and reservation easier.
 
+The platform provides three primary workspaces:
+
+- **Drivers** can search for available parking spaces, view locations on an interactive map, make reservations, and manage their bookings.
+- **Parking Owners** can publish parking spaces, upload verification images, configure pricing and availability, and manage reservations.
+- **Administrators** can verify parking listings, manage users, review bookings, and monitor platform-level information.
+
+Parkr uses a hybrid application architecture. The application can use **Firebase Authentication, Cloud Firestore, and Firebase Cloud Storage** for cloud-backed functionality while also supporting a persistent **Node.js/Express JSON data store** for local or offline development.
+
+---
+
+## Problem Statement
+
+Finding suitable parking in busy areas can be time-consuming, while privately owned parking spaces may remain unused for significant periods.
+
+Parkr addresses this problem by providing a common platform where:
+
+1. Parking owners can make unused parking spaces available.
+2. Drivers can discover suitable spaces based on location and requirements.
+3. Parking listings can be reviewed before becoming available to users.
+4. Drivers can reserve spaces for a specified date and duration.
+5. Booking and payment information can be maintained digitally.
+
+---
+
+## Objectives
+
+The main objectives of Parkr are to:
+
+- Provide a centralized platform for parking-space discovery.
+- Allow parking owners to share and manage available spaces.
+- Help drivers find parking using an interactive map.
+- Support parking-slot reservation and booking management.
+- Provide role-based access for drivers, owners, and administrators.
+- Support parking-space verification through administrator approval.
+- Maintain booking and payment records.
+- Provide cloud-backed storage through Firebase.
+- Provide a persistent local fallback for development and offline operation.
+
+---
+
+## Key Features
+
+### Driver Portal
+
+- Interactive **Leaflet.js / OpenStreetMap** map.
+- Parking-space search and filtering.
+- Vehicle-type filtering such as Car, Bike, and Van.
+- Parking price and operating-hour information.
+- Date and duration based reservation.
+- Booking status and booking history.
+- Digital invoice/reference information.
+- Payment workflow supporting:
+  - UPI QR simulation.
+  - Test-card validation.
+  - Cash on arrival.
+
+### Parking Owner Portal
+
+- Dashboard with parking and reservation information.
+- Add and publish parking spaces.
+- Upload parking-space images.
+- Support for JPG, PNG, and WEBP images.
+- Configure parking price and operating hours.
+- Manage slot capacity and availability.
+- View incoming reservations.
+- Track payment status.
+- Submit new listings for administrator verification.
+
+### Administrator Portal
+
+- Platform dashboard.
+- Parking-slot verification queue.
+- Approve or reject submitted listings.
+- User management.
+- Booking and transaction monitoring.
+- Platform-level reports and analytics.
+- Occupancy and revenue information.
+
+### Backend
+
+- Node.js and Express.js REST API.
+- Authentication and role-aware request handling.
+- Parking-slot CRUD operations.
+- Booking management.
+- Payment processing workflow.
+- Reporting endpoints.
+- Persistent JSON fallback database.
+- Email notification service using Nodemailer.
+
+---
+
+## User Roles
+
+| Role | Main Responsibilities |
+|---|---|
+| **Driver** | Search parking, view locations, reserve spaces, make payments, and manage bookings |
+| **Parking Owner** | Add parking spaces, upload images, configure pricing/availability, and manage reservations |
+| **Administrator** | Verify listings, manage users, monitor bookings, and review platform information |
+
+Access to workspace functionality should be controlled according to the authenticated user's role.
+
+---
+
+## System Architecture
+
+```text
+                         +---------------------------+
+                         |        Web Browser        |
+                         | HTML5 / CSS3 / JavaScript |
+                         |     Leaflet + OSM Maps    |
+                         +------------+--------------+
+                                      |
+                                      | HTTP / REST
+                                      v
+                         +---------------------------+
+                         |     Node.js + Express     |
+                         |---------------------------|
+                         | Authentication            |
+                         | Parking Slot Management   |
+                         | Booking Management        |
+                         | Payment Workflow          |
+                         | Reports / Analytics       |
+                         | Notification Service      |
+                         +------------+--------------+
+                                      |
+                     +----------------+----------------+
+                     |                                 |
+                     v                                 v
+          +----------------------+          +----------------------+
+          |   Firebase Services  |          |  Local JSON Storage  |
+          |----------------------|          |----------------------|
+          | Firebase Auth        |          | db.json / db.js      |
+          | Cloud Firestore      |          | Persistent fallback  |
+          | Firebase Storage     |          | Offline development |
+          +----------------------+          +----------------------+
 ```
-                      +-----------------------------+
-                      |         Web Client          |
-                      | (HTML5 / CSS3 / ES6 / Leaflet) |
-                      +--------------+--------------+
-                                     |
-               +---------------------+---------------------+
-               | HTTP REST API                             | WebSocket / Firebase SDK
-               v                                           v
-+------------------------------+             +-------------------------------+
-|      Express.js Backend      |             |     Firebase Cloud Suite      |
-|  - Auth & Role Middleware    |             |  - Firebase Authentication    |
-|  - Booking & Slot Controllers|             |  - Cloud Firestore (NoSQL)    |
-|  - Payment Engine            |             |  - Firebase Cloud Storage     |
-|  - Nodemailer Email Service  |             +-------------------------------+
-+--------------+---------------+
-               |
-               v
-+------------------------------+
-| Persistent JSON Data Engine  |
-|      (db.json / db.js)       |
-+------------------------------+
-```
 
-### UML Alignment Highlights
-1. **Class Diagram**: Implemented in [`public/assets/js/models.js`](public/assets/js/models.js) with OOP class hierarchies:
-   - `User` $\to$ `Driver`, `ParkingOwner`, `Admin`
-   - `ParkingSlot`, `Booking`, `Payment`, `Review`
-2. **Use Case Realization**: Complete end-to-end user journeys for Drivers (Search $\to$ Book $\to$ Pay), Owners (List $\to$ Upload Photo $\to$ Manage), and Admins (Verify $\to$ Audit $\to$ Report).
-3. **Data Flow Diagrams (DFD Levels 0, 1, and 2)**: Traced across data stores (`users`, `slots`, `bookings`, `payments`).
+### Architecture Components
+
+**Frontend**
+- HTML5
+- CSS3
+- JavaScript ES6+
+- Leaflet.js
+- OpenStreetMap
+
+**Application Server**
+- Node.js
+- Express.js
+- REST API
+
+**Cloud Services**
+- Firebase Authentication
+- Cloud Firestore
+- Firebase Cloud Storage
+
+**Local Persistence**
+- File-backed JSON database
+
+**Notifications**
+- Nodemailer
 
 ---
 
-## 💻 Technology Stack
+## Technology Stack
 
-| Layer | Technology | Usage in Parkr |
+| Layer | Technology | Purpose |
 |---|---|---|
-| **Frontend UI** | HTML5, Modern CSS3, JavaScript (ES6+) | Fully responsive dark-themed dashboard UI, custom CSS variables, zero heavy framework overhead |
-| **Mapping & GPS** | Leaflet.js & OpenStreetMap | High-performance, 100% free geospatial map visualization with zero API rate limits |
-| **Backend Framework** | Node.js & Express.js | Dedicated RESTful micro-service backend (`/api/*`), route controllers, and static file server |
-| **Cloud Authentication** | Firebase Auth | Secure token-based user authentication supporting Driver, Owner, and Admin roles |
-| **Cloud Database** | Cloud Firestore | Real-time NoSQL cloud collections (`users`, `parkingSlots`, `bookings`, `payments`) |
-| **Cloud Storage** | Firebase Storage | Scalable cloud bucket storage for parking slot verification images |
-| **Local Storage Fallback** | File-backed JSON Engine | Built-in persistent database in `backend/data/db.json` for fully autonomous offline execution |
-| **Email Delivery** | Nodemailer | Transactional email confirmation engine with Ethereal development inbox |
-| **Deployment** | Vercel & Firebase Hosting | Dual deployment profiles via `vercel.json` and `firebase.json` |
+| Frontend | HTML5 | Application structure |
+| Styling | CSS3 | Responsive user interface |
+| Client Logic | JavaScript ES6+ | Application interaction and workflows |
+| Maps | Leaflet.js | Interactive map interface |
+| Map Data | OpenStreetMap | Map tiles/data |
+| Backend | Node.js | Server-side runtime |
+| API | Express.js | REST API and routing |
+| Authentication | Firebase Authentication | User authentication |
+| Database | Cloud Firestore | Cloud NoSQL data storage |
+| File Storage | Firebase Cloud Storage | Parking-space images |
+| Local Database | JSON / Node.js | Local persistent fallback |
+| Email | Nodemailer | Booking/notification emails |
+| Deployment | Vercel / Firebase Hosting | Application deployment |
+| Version Control | Git / GitHub | Source-code management |
 
 ---
 
-## 📁 Project Directory Structure
+## Project Structure
 
 ```text
 Parkr/
-├── backend/                  # Server-side architecture & REST API
+├── backend/
 │   ├── data/
-│   │   ├── db.js             # Atomic file-backed JSON database engine
-│   │   └── db.json           # Seeded database with parking spots and sample users
+│   │   ├── db.js
+│   │   └── db.json
 │   ├── routes/
-│   │   ├── auth.js           # User login and registration endpoints
-│   │   ├── bookings.js       # Reservation lifecycle endpoints
-│   │   ├── payments.js       # Payment processing and validation
-│   │   ├── reports.js        # Aggregated analytics and reporting
-│   │   └── slots.js          # Parking slot CRUD and geo-query endpoints
+│   │   ├── auth.js
+│   │   ├── bookings.js
+│   │   ├── payments.js
+│   │   ├── reports.js
+│   │   └── slots.js
 │   ├── services/
-│   │   └── notificationService.js # Nodemailer booking alert service
-│   └── server.js             # Express application entry point
+│   │   └── notificationService.js
+│   └── server.js
 │
-├── public/                   # Publicly served web client & static assets
-│   ├── index.html            # Main marketing & discovery landing page
-│   ├── login.html            # Unified role-based authentication portal
-│   ├── register.html         # New user onboarding (Driver / Space Owner)
-│   ├── driver.html           # Driver workspace & interactive booking map
-│   ├── owner.html            # Parking owner workspace & slot management
-│   ├── admin.html            # System administrator oversight panel
+├── public/
+│   ├── index.html
+│   ├── login.html
+│   ├── register.html
+│   ├── driver.html
+│   ├── owner.html
+│   ├── admin.html
 │   └── assets/
 │       ├── css/
-│       │   ├── auth.css          # Authentication form styling
-│       │   ├── components.css    # Reusable UI component library (cards, modals, badges)
-│       │   ├── dashboard.css     # Workspace grid layouts and sidebar styling
-│       │   ├── responsive.css    # Mobile, tablet, and widescreen breakpoints
-│       │   └── style.css         # Global typography, colors, and base styles
+│       │   ├── auth.css
+│       │   ├── components.css
+│       │   ├── dashboard.css
+│       │   ├── responsive.css
+│       │   └── style.css
 │       ├── images/
 │       │   └── logo/
-│       │       ├── parkr-logo.png # Primary Parkr logo
+│       │       ├── parkr-logo.png
 │       │       └── parkr-logo-orange.svg
 │       └── js/
-│           ├── admin.js          # Admin workspace controller
-│           ├── app.js            # Global router, toast system, and session guardian
-│           ├── auth.js           # Authentication form validation and role redirector
-│           ├── driver.js         # Driver map controller, search, and checkout engine
-│           ├── firebase-backend.js # Firebase client initialization & sync layer
-│           ├── home.js           # Landing page interactive features
-│           ├── models.js         # OOP domain models matching UML class diagram
-│           ├── owner.js          # Owner workspace controller & photo upload engine
-│           ├── store.js          # Unified reactive data store (Firebase + Local DB)
-│           └── utils.js          # Formatting, date parsing, and DOM utilities
+│           ├── admin.js
+│           ├── app.js
+│           ├── auth.js
+│           ├── driver.js
+│           ├── firebase-backend.js
+│           ├── home.js
+│           ├── models.js
+│           ├── owner.js
+│           ├── store.js
+│           └── utils.js
 │
 ├── firebase/
-│   └── firebase-config.js    # Public Firebase Web SDK configuration
-├── .env.example              # Template for environment variables
-├── .gitignore                # Git ignore rules for node_modules, .env, and logs
-├── README.md                 # Project documentation
-├── firebase.json             # Firebase deployment configuration
-├── firestore.rules           # Cloud Firestore security rules
-├── package.json              # Project dependencies and npm scripts
-├── package-lock.json         # Locked dependency tree
-└── vercel.json               # Vercel serverless deployment config
+│   └── firebase-config.js
+├── .env.example
+├── .gitignore
+├── firebase.json
+├── firestore.rules
+├── package.json
+├── package-lock.json
+├── README.md
+└── vercel.json
 ```
 
 ---
 
-## ⚡ Getting Started
+## Prerequisites
 
-### Prerequisites
-- **Node.js**: v18.0.0 or higher ([Download Node.js](https://nodejs.org/))
-- **npm**: v9.0.0 or higher
-- **Git**: ([Download Git](https://git-scm.com/))
+Install the following before running the project:
+
+- **Node.js 18 or later**
+- **npm 9 or later**
+- **Git**
+
+Verify the installations:
+
+```bash
+node --version
+npm --version
+git --version
+```
+
+---
+
+## Getting Started
 
 ### 1. Clone the Repository
+
 ```bash
 git clone https://github.com/Krithick-Rajan/Parkr.git
 cd Parkr
 ```
 
 ### 2. Install Dependencies
+
 ```bash
 npm install
 ```
 
 ### 3. Configure Environment Variables
-Copy the sample environment file:
-```bash
-# On Windows PowerShell:
-Copy-Item .env.example .env
 
-# On Linux / macOS:
+Create a local `.env` file from the supplied example:
+
+#### Windows PowerShell
+
+```powershell
+Copy-Item .env.example .env
+```
+
+#### Linux / macOS
+
+```bash
 cp .env.example .env
 ```
 
-*(Optional)* If you wish to connect your own Firebase project, configure your keys inside `.env`. If left unconfigured, Parkr automatically runs in **Offline Persistent Mode** without missing any features!
+Configure the Firebase and other environment values required by the current project implementation.
 
-### 4. Run the Application
+> Do not commit `.env` or private credentials to GitHub.
+
+### 4. Start the Application
+
 ```bash
 npm start
 ```
 
-Open your browser and visit:
-👉 **`http://127.0.0.1:5500`**
+The application can then be opened at the local development address configured by the project, for example:
+
+```text
+http://127.0.0.1:5500
+```
+
+If your `package.json` uses a different port, use the port printed by the server.
 
 ---
 
-## 🔑 User Onboarding & Roles
+## Environment Configuration
 
-Users dynamically create their own accounts via the [Registration Portal](http://127.0.0.1:5500/register.html) by selecting their designated role:
+The repository contains `.env.example` as the configuration template.
 
-- **Driver**: Discover verified parking on interactive Leaflet maps, reserve parking slots, and process digital payments.
-- **Parking Owner**: List parking spaces with custom photos, set hourly rates and operating hours, and track driver reservations.
-- **Administrator**: Verify and approve owner listings, audit financial transactions, and inspect platform analytics.
+Depending on the enabled deployment mode, configuration may include Firebase project settings and notification-service settings.
 
-Once registered, users can login at [Login Portal](http://127.0.0.1:5500/login.html) where their role is automatically recognized.
+Example structure:
 
----
+```env
+# Firebase
+FIREBASE_PROJECT_ID=
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY=
 
-## 📡 API Endpoints
+# Notification / Email configuration
+SMTP_HOST=
+SMTP_PORT=
+SMTP_USER=
+SMTP_PASS=
+```
 
-The backend exposes a full suite of RESTful API endpoints on `http://127.0.0.1:5500/api`:
+Use the exact variable names already defined in your project's `.env.example`.
 
-### 🚗 Slots API (`/api/slots`)
-- `GET /api/slots` — Fetch all parking slots (supports `?vehicle=Car&status=approved` filters).
-- `GET /api/slots/:id` — Retrieve specific slot details.
-- `POST /api/slots` — Create a new parking slot (Owner).
-- `PATCH /api/slots/:id` — Update slot pricing, availability, or status (Owner / Admin).
-- `DELETE /api/slots/:id` — Remove a parking slot.
+For security:
 
-### 📅 Bookings API (`/api/bookings`)
-- `GET /api/bookings` — List all reservations (supports `?driverId=...` and `?ownerId=...`).
-- `POST /api/bookings` — Create a new reservation and trigger email alert.
-- `PATCH /api/bookings/:id` — Update booking status (`confirmed`, `completed`, `cancelled`).
-
-### 💳 Payments API (`/api/payments`)
-- `POST /api/payments/create-order` — Initialize payment transaction order.
-- `POST /api/payments/verify` — Verify payment receipt and update reservation state.
-
-### 📊 Analytics & Reports API (`/api/reports`)
-- `GET /api/reports/summary` — High-level platform KPIs (revenue, active slots, bookings).
-- `GET /api/reports/occupancy` — Slot occupancy rates and peak parking hours.
+- Never commit `.env`.
+- Never publish Firebase private credentials.
+- Never place SMTP passwords or service credentials in frontend JavaScript.
+- Use Firebase Security Rules to protect Firestore and Storage resources.
 
 ---
 
-## 🚀 Deployment
+## Application Workflow
 
-### Deploying to Vercel
-The project includes a ready-to-use [`vercel.json`](vercel.json):
+### Driver Workflow
+
+```text
+Register / Login
+       |
+       v
+Driver Dashboard
+       |
+       v
+Search Parking
+       |
+       v
+View Parking on Map
+       |
+       v
+Select Parking Space
+       |
+       v
+Choose Date & Duration
+       |
+       v
+Confirm Booking
+       |
+       v
+Payment
+       |
+       v
+Booking Confirmation
+```
+
+### Parking Owner Workflow
+
+```text
+Register / Login
+       |
+       v
+Owner Dashboard
+       |
+       v
+Add Parking Space
+       |
+       v
+Upload Image
+       |
+       v
+Set Price / Hours / Capacity
+       |
+       v
+Submit Listing
+       |
+       v
+Administrator Verification
+       |
+       +------ Rejected
+       |
+       +------ Approved
+                 |
+                 v
+          Listing Available
+```
+
+### Administrator Workflow
+
+```text
+Administrator Login
+        |
+        v
+Admin Dashboard
+        |
+        +--> Review Users
+        |
+        +--> Review Parking Listings
+        |        |
+        |        +--> Approve
+        |        |
+        |        +--> Reject
+        |
+        +--> Review Bookings
+        |
+        +--> Review Reports / Analytics
+```
+
+---
+
+## API Reference
+
+The backend exposes REST endpoints under:
+
+```text
+/api
+```
+
+### Parking Slots
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/slots` | Retrieve parking slots |
+| GET | `/api/slots/:id` | Retrieve a specific slot |
+| POST | `/api/slots` | Create a parking slot |
+| PATCH | `/api/slots/:id` | Update a parking slot |
+| DELETE | `/api/slots/:id` | Delete a parking slot |
+
+Example filtering:
+
+```text
+GET /api/slots?vehicle=Car&status=approved
+```
+
+### Bookings
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/bookings` | Retrieve bookings |
+| POST | `/api/bookings` | Create a booking |
+| PATCH | `/api/bookings/:id` | Update booking status |
+
+Supported booking filters include driver and owner identifiers where implemented:
+
+```text
+GET /api/bookings?driverId=<id>
+GET /api/bookings?ownerId=<id>
+```
+
+### Payments
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/payments/create-order` | Initialize a payment transaction |
+| POST | `/api/payments/verify` | Verify a payment result |
+
+### Reports
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/reports/summary` | Retrieve platform summary information |
+| GET | `/api/reports/occupancy` | Retrieve parking occupancy information |
+
+> API availability depends on the backend configuration and current implementation.
+
+---
+
+## Data Model
+
+The application works with the following core entities:
+
+### User
+
+Represents an authenticated platform user.
+
+Typical role values:
+
+```text
+Driver
+ParkingOwner
+Admin
+```
+
+### ParkingSlot
+
+Represents a parking space listed by an owner.
+
+Typical information includes:
+
+- Owner
+- Location
+- Vehicle type
+- Price
+- Operating hours
+- Capacity
+- Availability
+- Verification/status
+- Image information
+
+### Booking
+
+Represents a reservation made by a driver.
+
+Typical information includes:
+
+- Driver
+- Parking slot
+- Date
+- Duration
+- Amount
+- Booking status
+- Payment status
+
+### Payment
+
+Represents payment information associated with a booking.
+
+### Review
+
+Represents user feedback associated with a completed parking interaction where supported.
+
+---
+
+## Security
+
+Parkr incorporates several security considerations:
+
+- Role-based application access.
+- Firebase Authentication for cloud authentication.
+- Firestore Security Rules.
+- Protected Storage access for uploaded parking images.
+- Environment variables for sensitive configuration.
+- Server-side API validation.
+- Separation of frontend and backend responsibilities.
+- No credentials should be committed to source control.
+
+### Production Security Checklist
+
+Before production deployment:
+
+- [ ] Configure Firebase Security Rules.
+- [ ] Review Firestore access permissions.
+- [ ] Review Firebase Storage rules.
+- [ ] Keep all secrets outside the repository.
+- [ ] Validate all API inputs.
+- [ ] Restrict administrative operations to authorized users.
+- [ ] Use HTTPS in production.
+- [ ] Review email-service credentials and permissions.
+
+---
+
+## Deployment
+
+Parkr can be deployed using the deployment configuration included in the repository.
+
+### Vercel
+
+The project contains `vercel.json`.
+
+After installing/configuring the Vercel CLI:
+
 ```bash
 npx vercel
 ```
 
-### Deploying to Firebase Hosting
+Follow the CLI prompts and configure the required environment variables in the Vercel project.
+
+### Firebase Hosting
+
+Authenticate with Firebase:
+
 ```bash
 firebase login
+```
+
+Initialize hosting if required:
+
+```bash
 firebase init hosting
+```
+
+Deploy:
+
+```bash
 firebase deploy
 ```
 
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Follow these steps to contribute:
-1. Fork the Project.
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`).
-3. Commit your Changes (`git commit -m 'feat: add some AmazingFeature'`).
-4. Push to the Branch (`git push origin feature/AmazingFeature`).
-5. Open a Pull Request.
+For production, configure Firebase Authentication, Firestore, Storage, and their security rules before exposing the application publicly.
 
 ---
 
-## 📄 License
+## Testing and Verification
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+Before considering a deployment ready, verify the main workflows.
+
+### Authentication
+
+- [ ] Driver registration works.
+- [ ] Parking Owner registration works.
+- [ ] Login works.
+- [ ] Invalid credentials are rejected.
+- [ ] Users are redirected to the correct workspace.
+
+### Parking Management
+
+- [ ] Owner can create a parking listing.
+- [ ] Image upload works.
+- [ ] Listing reaches the administrator verification workflow.
+- [ ] Administrator can approve/reject a listing.
+- [ ] Approved listing becomes available according to the implementation.
+
+### Booking
+
+- [ ] Driver can search for parking.
+- [ ] Driver can view parking details.
+- [ ] Driver can select date and duration.
+- [ ] Booking is created successfully.
+- [ ] Booking status is updated correctly.
+
+### Payment
+
+- [ ] Payment workflow can be initiated.
+- [ ] Payment result is validated.
+- [ ] Booking/payment status is synchronized.
+
+### Administration
+
+- [ ] Administrator can inspect users.
+- [ ] Administrator can review parking listings.
+- [ ] Administrator can inspect booking information.
+- [ ] Reports/analytics load correctly.
+
+---
+
+## Future Enhancements
+
+Potential extensions for Parkr include:
+
+- Real payment gateway integration.
+- Advanced geospatial search and route optimization.
+- Real-time parking availability.
+- Push notifications.
+- Mobile application.
+- Dynamic pricing.
+- Reservation cancellation and refund workflows.
+- Enhanced owner and driver reviews.
+- Advanced analytics dashboards.
+- Automated fraud and duplicate-listing detection.
+- Production-grade database migration from JSON fallback storage.
+
+---
+
+## Contributing
+
+Contributions can be made through the standard Git workflow:
+
+```bash
+git checkout -b feature/your-feature
+git add .
+git commit -m "feat: describe your change"
+git push origin feature/your-feature
+```
+
+Then open a Pull Request.
+
+When contributing:
+
+- Keep changes focused.
+- Follow the existing project structure.
+- Do not commit secrets or environment files.
+- Test affected workflows before submitting changes.
+- Update documentation when functionality changes.
+
+---
+
+## License
+
+This project is licensed under the **MIT License**.
+
+See the `LICENSE` file for the complete license text.
+
+---
+
+## Author
+
+**Krithick Rajan**
+
+Computer Science and Engineering Student
+
+GitHub: [Krithick-Rajan](https://github.com/Krithick-Rajan)
 
 ---
 
 <div align="center">
-  <b>Built with ❤️ by <a href="https://github.com/Krithick-Rajan">Krithick Rajan</a></b>
+
+**Parkr — Smart Parking Slot Sharing Marketplace**
+
+Built for efficient parking discovery, sharing, and reservation.
+
 </div>
