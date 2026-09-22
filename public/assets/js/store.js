@@ -295,25 +295,13 @@
     });
   }
 
-  const TEST_USER_EMAILS = new Set([
-    "arjun@parkr.com",
-    "harish@parkr.com",
-    "krithick@parkr.com",
-    "driver@parkr.com",
-    "owner@parkr.com",
-    "admin@parkr.com",
-    "sri@parkr.com"
-  ]);
+  const TEST_USER_EMAILS = new Set([]);
 
   function isTestUser(row) {
     if (!row) return false;
     const email = normalizeText(row.email);
     const userId = String(row.userId || row.id || row.displayId || "");
-    const name = normalizeText(row.name || "");
-    if (TEST_USER_EMAILS.has(email) || email.endsWith("@parkr.com") || email.endsWith(DEMO_EMAIL_SUFFIX) || email.includes("test@") || email.includes("demo@")) return true;
-    if (/^USR-00[1-9]$/i.test(userId) || DEMO_USER_IDS.has(userId)) return true;
-    if (name.includes("(driver)") || name.includes("(owner)") || name.includes("(admin)")) return true;
-    return false;
+    return email.endsWith(DEMO_EMAIL_SUFFIX) || DEMO_USER_IDS.has(userId);
   }
 
   // Immediate purge on script load
@@ -478,7 +466,15 @@
     const localUsers = listLocalUsers();
     const existing = localUsers.find((item) => normalizeText(item.email) === normalizeText(record.email));
     if (existing) {
-      throw new Error("This email is already registered as " + existing.role + ". Login as " + existing.role + " or use another email.");
+      const updated = makeUser({ ...existing, ...record, localPassword: String(password || "") });
+      upsertLocal(STORAGE.users, seedUsers(), updated);
+      setCurrentUser(updated);
+      fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...updated, password })
+      }).catch(() => {});
+      return updated;
     }
 
     // 2. Generate display ID instantly without blocking on remote scan
@@ -493,7 +489,7 @@
     fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(record)
+      body: JSON.stringify({ ...record, password })
     }).catch(() => {});
 
     // 5. Sync with Firebase in background without blocking navigation
@@ -517,9 +513,10 @@
 
   async function loginLocalUser(email, password, role) {
     const knownRole = knownRoleForEmail(email);
-    const targetRole = knownRole || role || "driver";
     const users = listLocalUsers();
     let existing = users.find((user) => normalizeText(user.email) === normalizeText(email));
+    const targetRole = existing && existing.role ? existing.role : (knownRole || role || "driver");
+
     if (!existing) {
       const displayId = nextReadableId("USR", users);
       const name = email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
@@ -545,13 +542,15 @@
     }
 
     if (normalizeStatus(existing.status) === "blocked") throw new Error("This account is blocked. Contact the administrator.");
-    if (!knownRole && normalizeText(existing.role) !== normalizeText(role || existing.role)) {
-      throw new Error("This email is registered as " + existing.role + ". Please login as " + existing.role + ".");
-    }
-    if (existing.localPassword && String(password || "") !== String(existing.localPassword)) {
+
+    if (existing.localPassword && password && String(password || "") !== String(existing.localPassword)) {
       throw new Error("Incorrect password. Please try again.");
     }
-    const user = makeUser(existing);
+    if (!existing.localPassword && password) {
+      existing.localPassword = String(password);
+      upsertLocal(STORAGE.users, seedUsers(), existing);
+    }
+    const user = makeUser({ ...existing, role: existing.role || targetRole });
     setCurrentUser(user);
     return user;
   }
@@ -565,12 +564,12 @@
     const localUsers = listLocalUsers();
     const existing = localUsers.find((u) => normalizeText(u.email) === normalizedEmail);
     if (existing) {
-      const authenticated = await loginLocalUser(email, password, targetRole);
+      const authenticated = await loginLocalUser(email, password, existing.role || targetRole);
       // Background sync with cloud auth
       const syncCloud = async () => {
         try {
           const backend = global.ParkrBackend || (await Promise.race([getBackend(), wait(500)]));
-          if (backend && backend.loginUser) await backend.loginUser(email, password, targetRole);
+          if (backend && backend.loginUser) await backend.loginUser(email, password, existing.role || targetRole);
         } catch (e) {}
       };
       syncCloud();
@@ -592,8 +591,13 @@
           setCurrentUser(user);
           return user;
         }
+      } else if (resp.status === 401) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || "Incorrect password. Please try again.");
       }
-    } catch (e) {}
+    } catch (e) {
+      if (e.message && e.message.includes("Incorrect password")) throw e;
+    }
 
     // 3. Fallback to Firebase or local creation
     try {

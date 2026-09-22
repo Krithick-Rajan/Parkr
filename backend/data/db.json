@@ -1,5 +1,45 @@
 {
-  "users": [],
+  "users": [
+    {
+      "id": "USR-001",
+      "userId": "USR-001",
+      "displayId": "USR-001",
+      "name": "Krithick Rajan",
+      "email": "krithick@parkr.com",
+      "phone": "9869874563",
+      "role": "admin",
+      "status": "approved",
+      "vehicle": "",
+      "business": "",
+      "createdAt": "2026-09-22T18:24:08.620Z"
+    },
+    {
+      "id": "USR-002",
+      "userId": "USR-002",
+      "displayId": "USR-002",
+      "name": "Sri",
+      "email": "sri@parkr.com",
+      "phone": "8596471236",
+      "role": "owner",
+      "status": "approved",
+      "vehicle": "",
+      "business": "",
+      "createdAt": "2026-09-22T18:24:44.476Z"
+    },
+    {
+      "id": "USR-003",
+      "userId": "USR-003",
+      "displayId": "USR-003",
+      "name": "Reshmi",
+      "email": "reshmi@parkr.com",
+      "phone": "7896452136",
+      "role": "driver",
+      "status": "approved",
+      "vehicle": "",
+      "business": "",
+      "createdAt": "2026-09-22T18:25:07.954Z"
+    }
+  ],
   "slots": [
     {
       "id": "SL-001",
