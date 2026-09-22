@@ -339,43 +339,6 @@
         paidAt
       });
 
-      // Synchronize with Express backend (persists in backend db & triggers Nodemailer email alert)
-      try {
-        await fetch("/api/bookings", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            slotId: slot.id,
-            slot: slot.name,
-            driverId: paidBy,
-            driver: user.name,
-            date: data.get("date"),
-            time: data.get("time"),
-            endTime: addHours(data.get("time"), hoursBooked),
-            amount,
-            status: "paid",
-            paymentMode,
-            vehicleNumber: data.get("vehicleNumber"),
-            vehicleType: data.get("vehicleType"),
-            ownerId: slot.ownerId
-          })
-        });
-        await fetch("/api/payments/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            bookingId: booking.bookingId || booking.id,
-            amount,
-            paymentMode,
-            paidBy,
-            paidByName: user.name,
-            payerRole: "driver"
-          })
-        });
-      } catch (backendErr) {
-        console.warn("[Backend API] Offline/Fallback mode active:", backendErr.message);
-      }
-
       const nextAvailable = Math.max(latestAvailable - 1, 0);
       await ParkrStore.updateSlot(slot.id, {
         available: nextAvailable,

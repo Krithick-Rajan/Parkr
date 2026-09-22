@@ -59,6 +59,42 @@
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  async function apiJson(url, options) {
+    const response = await fetch(url, {
+      ...(options || {}),
+      headers: {
+        "Content-Type": "application/json",
+        ...((options && options.headers) || {})
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`API ${response.status} for ${url}`);
+    }
+    return response.json();
+  }
+
+  function mergeById(...groups) {
+    const rows = [];
+    const seen = new Set();
+    groups.flat().forEach((row) => {
+      if (!row) return;
+      const key = String(idOf(row) || "");
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      rows.push(row);
+    });
+    return rows;
+  }
+
+  async function listApiRows(url) {
+    try {
+      const rows = await apiJson(url);
+      return Array.isArray(rows) ? rows : [];
+    } catch (err) {
+      return [];
+    }
+  }
+
   function waitForBackendReady() {
     if (global.ParkrBackend && global.ParkrBackend.isConfigured) {
       return Promise.resolve(global.ParkrBackend);
@@ -732,41 +768,24 @@
     let allSlots = memoryCache.slots;
     if (!allSlots || settings.forceRefresh) {
       const local = listLocalSlots();
-      if (!settings.forceRefresh && local.length > 0) {
-        allSlots = withDisplayIds(local.map(makeSlot), "SL");
-        memoryCache.slots = allSlots;
-        // Background sync
-        getBackend().then((backend) => {
-          if (backend && backend.listSlots) {
-            backend.listSlots({ adminOnly: true }).then((rows) => {
-              if (rows && rows.length) {
-                const cloudIds = new Set(rows.map((r) => String(r.id || r.slotId || "")));
-                local.forEach((l) => {
-                  if (!cloudIds.has(String(l.id || l.slotId || ""))) rows.push(l);
-                });
-                memoryCache.slots = withDisplayIds(rows.map(makeSlot), "SL");
-              }
-            }).catch(() => {});
+      const [cloudRows, apiRows] = await Promise.all([
+        (async () => {
+          try {
+            const backend = await Promise.race([getBackend(), wait(1200)]);
+            return backend && backend.listSlots ? await backend.listSlots({ adminOnly: true }) : [];
+          } catch (err) {
+            return [];
           }
-        }).catch(() => {});
-      } else {
-        let rows = [];
-        try {
-          const backend = await Promise.race([getBackend(), wait(350)]);
-          rows = backend && backend.listSlots ? await backend.listSlots({ adminOnly: true }) : [];
-        } catch (err) {
-          rows = [];
-        }
-        if (!rows || rows.length === 0) {
-          rows = local;
-        } else {
-          const cloudIds = new Set(rows.map((r) => String(r.id || r.slotId || "")));
-          local.forEach((l) => {
-            if (!cloudIds.has(String(l.id || l.slotId || ""))) rows.push(l);
-          });
-        }
-        allSlots = withDisplayIds(rows.map(makeSlot), "SL");
-        memoryCache.slots = allSlots;
+        })(),
+        listApiRows("/api/slots?adminOnly=true")
+      ]);
+
+      const rows = mergeById(cloudRows, apiRows, local);
+      allSlots = withDisplayIds(rows.map(makeSlot), "SL");
+      memoryCache.slots = allSlots;
+
+      if (apiRows.length) {
+        setCollection(STORAGE.slots, rows.map(makeSlot));
       }
     }
 
@@ -846,14 +865,21 @@
       verificationStatus: "pending",
       availabilityStatus: "unavailable"
     });
+    let saved = record;
     if (backend && backend.addSlot) {
       try {
-        await backend.addSlot(record);
+        saved = await backend.addSlot(record) || saved;
       } catch (err) {
         console.warn("[Store] Cloud addSlot write failed, saving locally:", err.message);
       }
     }
-    return upsertLocal(STORAGE.slots, seedSlots(), record);
+    try {
+      saved = await apiJson("/api/slots", {
+        method: "POST",
+        body: JSON.stringify(saved)
+      }) || saved;
+    } catch (err) {}
+    return upsertLocal(STORAGE.slots, seedSlots(), makeSlot(saved));
   }
 
   async function updateSlot(slotId, changes) {
@@ -866,6 +892,12 @@
         console.warn("[Store] Cloud updateSlot failed:", err.message);
       }
     }
+    try {
+      await apiJson(`/api/slots/${encodeURIComponent(slotId)}`, {
+        method: "PUT",
+        body: JSON.stringify(changes || {})
+      });
+    } catch (err) {}
     const rows = listLocalSlots().map((slot) => {
       if (slot.id !== slotId && slot.slotId !== slotId) return slot;
       return makeSlot({ ...slot, ...(changes || {}) });
@@ -881,7 +913,27 @@
       verificationStatus: normalized,
       availabilityStatus: normalized === "approved" ? "available" : "unavailable"
     };
-    return updateSlot(slotId, changes);
+    invalidateCache("slots");
+    const backend = await getBackend();
+    if (backend && backend.updateSlotStatus) {
+      try {
+        await backend.updateSlotStatus(slotId, normalized);
+      } catch (err) {
+        console.warn("[Store] Cloud updateSlotStatus failed:", err.message);
+      }
+    }
+    try {
+      await apiJson(`/api/slots/${encodeURIComponent(slotId)}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: normalized })
+      });
+    } catch (err) {}
+    const rows = listLocalSlots().map((slot) => {
+      if (slot.id !== slotId && slot.slotId !== slotId) return slot;
+      return makeSlot({ ...slot, ...changes });
+    });
+    setCollection(STORAGE.slots, rows);
+    return rows.find((slot) => slot.id === slotId || slot.slotId === slotId);
   }
 
   async function deleteSlot(slotId) {
@@ -894,6 +946,9 @@
         console.warn("[Store] Cloud deleteSlot failed:", err.message);
       }
     }
+    try {
+      await apiJson(`/api/slots/${encodeURIComponent(slotId)}`, { method: "DELETE" });
+    } catch (err) {}
     const rows = listLocalSlots().filter((slot) => slot.id !== slotId && slot.slotId !== slotId);
     setCollection(STORAGE.slots, rows);
     return true;
@@ -904,41 +959,22 @@
     let allBookings = memoryCache.bookings;
     if (!allBookings || settings.forceRefresh) {
       const local = listLocalBookings();
-      if (!settings.forceRefresh && local.length > 0) {
-        allBookings = withDisplayIds(local.map(makeBooking), "BK");
-        memoryCache.bookings = allBookings;
-        // Background sync
-        getBackend().then((backend) => {
-          if (backend && backend.listBookings) {
-            backend.listBookings().then((rows) => {
-              if (rows && rows.length) {
-                const cloudIds = new Set(rows.map((r) => String(r.id || r.bookingId || "")));
-                local.forEach((l) => {
-                  if (!cloudIds.has(String(l.id || l.bookingId || ""))) rows.push(l);
-                });
-                memoryCache.bookings = withDisplayIds(rows.map(makeBooking), "BK");
-              }
-            }).catch(() => {});
+      const [cloudRows, apiRows] = await Promise.all([
+        (async () => {
+          try {
+            const backend = await Promise.race([getBackend(), wait(1200)]);
+            return backend && backend.listBookings ? await backend.listBookings() : [];
+          } catch (err) {
+            return [];
           }
-        }).catch(() => {});
-      } else {
-        let rows = [];
-        try {
-          const backend = await Promise.race([getBackend(), wait(350)]);
-          rows = backend && backend.listBookings ? await backend.listBookings() : [];
-        } catch (err) {
-          rows = [];
-        }
-        if (!rows || rows.length === 0) {
-          rows = local;
-        } else {
-          const cloudIds = new Set(rows.map((r) => String(r.id || r.bookingId || "")));
-          local.forEach((l) => {
-            if (!cloudIds.has(String(l.id || l.bookingId || ""))) rows.push(l);
-          });
-        }
-        allBookings = withDisplayIds(rows.map(makeBooking), "BK");
-        memoryCache.bookings = allBookings;
+        })(),
+        listApiRows("/api/bookings")
+      ]);
+      const rows = mergeById(cloudRows, apiRows, local);
+      allBookings = withDisplayIds(rows.map(makeBooking), "BK");
+      memoryCache.bookings = allBookings;
+      if (apiRows.length) {
+        setCollection(STORAGE.bookings, rows.map(makeBooking));
       }
     }
     let rows = allBookings || [];
@@ -963,14 +999,24 @@
     invalidateCache("bookings");
     const backend = await getBackend();
     const rows = listLocalBookings();
+    const existingId = booking.id || booking.bookingId || "";
+    const existing = existingId ? rows.find((row) => row.id === existingId || row.bookingId === existingId) : null;
     const bookingId = readableIdFrom(booking, "BK") || nextReadableId("BK", rows);
-    const record = makeBooking({ ...booking, id: bookingId, bookingId, displayId: bookingId });
+    let record = makeBooking({ ...booking, id: existingId || bookingId, bookingId: existingId || bookingId, displayId: existingId || bookingId });
     if (backend && backend.saveBooking) {
       try {
         await backend.saveBooking(record);
       } catch (err) {
         console.warn("[Store] Cloud saveBooking failed, saving locally:", err.message);
       }
+    }
+    if (!existing) {
+      try {
+        record = makeBooking(await apiJson("/api/bookings", {
+          method: "POST",
+          body: JSON.stringify(record)
+        }));
+      } catch (err) {}
     }
     return upsertLocal(STORAGE.bookings, seedBookings(), record);
   }
@@ -986,6 +1032,12 @@
         console.warn("[Store] Cloud updateBookingStatus failed:", err.message);
       }
     }
+    try {
+      await apiJson(`/api/bookings/${encodeURIComponent(bookingId)}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: normalized })
+      });
+    } catch (err) {}
     const rows = listLocalBookings().map((booking) => (booking.id === bookingId || booking.bookingId === bookingId ? { ...booking, status: normalized } : booking));
     setCollection(STORAGE.bookings, rows);
     return rows.find((booking) => booking.id === bookingId || booking.bookingId === bookingId);
@@ -994,40 +1046,23 @@
   async function listPayments(forceRefresh = false) {
     if (!forceRefresh && memoryCache.payments && memoryCache.payments.length) return memoryCache.payments;
     const local = listLocalPayments();
-    if (!forceRefresh && local.length > 0) {
-      memoryCache.payments = withDisplayIds(local.map(makePayment), "PAY");
-      getBackend().then((backend) => {
-        if (backend && backend.listPayments) {
-          backend.listPayments().then((rows) => {
-            if (rows && rows.length) {
-              const cloudIds = new Set(rows.map((p) => String(p.id || p.paymentId || "")));
-              local.forEach((l) => {
-                if (!cloudIds.has(String(l.id || l.paymentId || ""))) rows.push(l);
-              });
-              memoryCache.payments = withDisplayIds(rows.map(makePayment), "PAY");
-            }
-          }).catch(() => {});
+    const [cloudRows, apiRows] = await Promise.all([
+      (async () => {
+        try {
+          const backend = await Promise.race([getBackend(), wait(1200)]);
+          return backend && backend.listPayments ? await backend.listPayments() : [];
+        } catch (err) {
+          return [];
         }
-      }).catch(() => {});
-      return memoryCache.payments;
-    }
-    let rows = [];
-    try {
-      const backend = await Promise.race([getBackend(), wait(350)]);
-      rows = backend && backend.listPayments ? await backend.listPayments() : [];
-    } catch (err) {
-      rows = [];
-    }
-    if (!rows || rows.length === 0) {
-      rows = local;
-    } else {
-      const cloudIds = new Set(rows.map((p) => String(p.id || p.paymentId || "")));
-      local.forEach((l) => {
-        if (!cloudIds.has(String(l.id || l.paymentId || ""))) rows.push(l);
-      });
-    }
+      })(),
+      listApiRows("/api/payments")
+    ]);
+    const rows = mergeById(cloudRows, apiRows, local);
     const result = withDisplayIds(rows.map(makePayment), "PAY");
     memoryCache.payments = result;
+    if (apiRows.length) {
+      setCollection(STORAGE.payments, rows.map(makePayment));
+    }
     return result;
   }
 
@@ -1036,10 +1071,10 @@
     invalidateCache("payments");
     invalidateCache("bookings");
     const backend = await getBackend();
-    const rows = backend && backend.listPayments ? await backend.listPayments() : listLocalPayments();
+    const rows = listLocalPayments();
     const paymentId = readableIdFrom(payment, "PAY") || nextReadableId("PAY", rows);
     const paymentDate = payment.paymentDate || payment.paidAt || new Date().toISOString();
-    const record = makePayment({
+    let record = makePayment({
       ...payment,
       id: paymentId,
       paymentId,
@@ -1049,7 +1084,20 @@
       paymentDate,
       paidAt: paymentDate
     });
-    if (backend && backend.savePayment) return backend.savePayment(record);
+    if (backend && backend.savePayment) {
+      try {
+        await backend.savePayment(record);
+      } catch (err) {
+        console.warn("[Store] Cloud savePayment failed, saving locally:", err.message);
+      }
+    }
+    try {
+      const result = await apiJson("/api/payments/verify", {
+        method: "POST",
+        body: JSON.stringify(record)
+      });
+      if (result && result.payment) record = makePayment(result.payment);
+    } catch (err) {}
     return upsertLocal(STORAGE.payments, seedPayments(), record);
   }
 

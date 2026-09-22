@@ -5,7 +5,9 @@ let cachedTransporter = null;
 async function getTransporter() {
   if (cachedTransporter) return cachedTransporter;
 
-  if (process.env.SMTP_HOST && process.env.SMTP_USER) {
+  const hasSmtpConfig = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
+
+  if (hasSmtpConfig) {
     cachedTransporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT || 587),
@@ -15,6 +17,7 @@ async function getTransporter() {
         pass: process.env.SMTP_PASS
       }
     });
+    await cachedTransporter.verify();
     return cachedTransporter;
   }
 
@@ -55,7 +58,7 @@ async function sendBookingConfirmationEmail(booking) {
     }
 
     const info = await transporter.sendMail({
-      from: '"Parkr Bookings" <no-reply@parkr.com>',
+      from: process.env.SMTP_FROM || '"Parkr Bookings" <no-reply@parkr.com>',
       to: recipient,
       subject: `Booking Confirmed: ${slotName} (ID: ${bookingId})`,
       text: `Hello ${driverName},\n\nYour parking booking #${bookingId} for ${slotName} on ${date} is confirmed.\nAmount Paid: Rs. ${amount} via ${paymentMode}.\n\nThank you for choosing Parkr!`,
