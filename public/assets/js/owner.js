@@ -1,4 +1,22 @@
 (function () {
+  function statusClass(status) {
+    return (typeof ParkrUtils !== "undefined" && ParkrUtils.statusToken)
+      ? ParkrUtils.statusToken(status)
+      : String(status || "pending").toLowerCase().replace(/[^a-z0-9_-]+/g, "-");
+  }
+
+  function h(value) {
+    return (typeof ParkrUtils !== "undefined" && ParkrUtils.escapeHtml)
+      ? ParkrUtils.escapeHtml(value)
+      : String(value ?? "");
+  }
+
+  function attr(value) {
+    return (typeof ParkrUtils !== "undefined" && ParkrUtils.escapeAttr)
+      ? ParkrUtils.escapeAttr(value)
+      : h(value);
+  }
+
   function currentOwner() {
     let user = (typeof ParkrStore !== "undefined" && ParkrStore.getCurrentUser) ? ParkrStore.getCurrentUser() : null;
     if (!user && typeof Parkr !== "undefined" && Parkr.getUser) user = Parkr.getUser();

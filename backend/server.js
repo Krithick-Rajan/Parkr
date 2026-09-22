@@ -55,13 +55,13 @@ app.get("/api/health", (req, res) => {
 const publicDir = path.join(rootDir, "public");
 app.use(express.static(publicDir, {
   extensions: ["html"],
-  etag: true,
-  lastModified: true,
+  etag: false,
+  lastModified: false,
   setHeaders: (res, filePath) => {
-    if (filePath.endsWith(".html")) {
-      res.setHeader("Cache-Control", "no-cache");
-    } else if (/\.(css|js)$/i.test(filePath)) {
-      res.setHeader("Cache-Control", "no-cache, must-revalidate");
+    if (filePath.endsWith(".html") || /\.(css|js)$/i.test(filePath)) {
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
     } else if (/\.(png|jpg|jpeg|svg|webp|woff2|woff|ttf)$/i.test(filePath)) {
       res.setHeader("Cache-Control", "public, max-age=3600");
     }
