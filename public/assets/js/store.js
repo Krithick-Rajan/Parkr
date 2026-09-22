@@ -632,42 +632,29 @@
   async function listUsers(forceRefresh = false) {
     if (!forceRefresh && memoryCache.users && memoryCache.users.length) return memoryCache.users;
 
-    // 1. If Cloud Backend (Firebase) is connected, it is the single authoritative source of truth
-    try {
-      const backend = await Promise.race([getBackend(), wait(2500)]);
-      if (backend && backend.isConfigured && backend.listUsers) {
-        const cloudUsers = await backend.listUsers();
-        if (Array.isArray(cloudUsers)) {
-          const cleanCloud = cloudUsers.filter((u) => !isTestUser(u));
-          setCollection(STORAGE.users, cleanCloud);
-          const result = withDisplayIds(cleanCloud.map(makeUser), "USR");
-          memoryCache.users = result;
-          return result;
-        }
-      }
-    } catch (err) {
-      console.warn("[Store] Cloud listUsers failed, trying server API:", err);
-    }
-
-    // 2. If Express server API is available
-    try {
-      const resp = await fetch("/api/auth/users");
-      if (resp.ok) {
-        const apiUsers = await resp.json();
-        if (Array.isArray(apiUsers)) {
-          const cleanApi = apiUsers.filter((u) => !isTestUser(u));
-          setCollection(STORAGE.users, cleanApi);
-          const result = withDisplayIds(cleanApi.map(makeUser), "USR");
-          memoryCache.users = result;
-          return result;
-        }
-      }
-    } catch (err) {}
-
-    // 3. Fallback to clean local storage
     const local = listLocalUsers().filter((u) => !isTestUser(u));
-    const result = withDisplayIds(local.map(makeUser), "USR");
+    const [cloudRows, apiRows] = await Promise.all([
+      (async () => {
+        try {
+          const backend = await Promise.race([getBackend(), wait(1200)]);
+          return backend && backend.isConfigured && backend.listUsers ? await backend.listUsers() : [];
+        } catch (err) {
+          return [];
+        }
+      })(),
+      listApiRows("/api/auth/users")
+    ]);
+
+    const cleanCloud = (cloudRows || []).filter((u) => !isTestUser(u));
+    const cleanApi = (apiRows || []).filter((u) => !isTestUser(u));
+
+    const rows = mergeById(cleanCloud, cleanApi, local);
+    const result = withDisplayIds(rows.map(makeUser), "USR");
     memoryCache.users = result;
+
+    if (cleanApi.length || cleanCloud.length) {
+      setCollection(STORAGE.users, rows.map(makeUser));
+    }
     return result;
   }
 
@@ -763,7 +750,6 @@
 
     const remaining = readStored(STORAGE.users).filter((u) => !isTestUser(u));
     setCollection(STORAGE.users, remaining);
-    localStorage.removeItem("parkrUsers");
     return true;
   }
 

@@ -298,21 +298,19 @@
 
       const refreshUsersBtn = event.target.closest("#refreshUsersBtn");
       if (refreshUsersBtn) {
-        setTableLoading(document.querySelector("#adminUserRows"), 6, "Syncing from Cloud...");
+        setTableLoading(document.querySelector("#adminUserRows"), 6, "Refreshing users...");
         await ParkrStore.listUsers(true);
         await renderUsers();
-        Parkr.showToast("Users synced from cloud");
+        Parkr.showToast("Users refreshed");
         return;
       }
 
       const purgeTestUsersBtn = event.target.closest("#purgeTestUsersBtn");
       if (purgeTestUsersBtn) {
-        setTableLoading(document.querySelector("#adminUserRows"), 6, "Purging test users...");
-        try { localStorage.removeItem("parkrUsers"); } catch (_) {}
-        await ParkrStore.purgeTestUsers();
+        setTableLoading(document.querySelector("#adminUserRows"), 6, "Refreshing users...");
         await ParkrStore.listUsers(true);
         await renderUsers();
-        Parkr.showToast("Test users purged");
+        Parkr.showToast("Users refreshed");
         return;
       }
 
