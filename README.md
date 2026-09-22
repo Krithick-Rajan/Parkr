@@ -1,5 +1,9 @@
 # Parkr
 
+<p align="center">
+  <img src="public/assets/images/logo/parkr-logo-orange.svg" alt="Parkr logo" width="160">
+</p>
+
 Parkr is a smart parking slot sharing marketplace for drivers, parking owners, and administrators. It provides a static web frontend, a Node.js/Express API, optional Firebase integration, a local JSON fallback database, simulated payments, and booking email notifications.
 
 ## Features
