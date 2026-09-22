@@ -29,27 +29,34 @@
     if (!target) return;
     const owner = currentOwner();
     if (!owner) {
-      target.innerHTML = '<tr><td colspan="7" class="muted" style="text-align: center; padding: 24px 14px;">No parking slots found.</td></tr>';
+      target.innerHTML = '<tr><td colspan="8" class="muted" style="text-align: center; padding: 24px 14px;">No parking slots found.</td></tr>';
       return;
     }
     const ownerId = ownerIdOf(owner);
     const ownerEmail = (owner.email || "").toLowerCase();
 
     try {
-      const slots = await ParkrStore.listOwnerSlots(ownerId, ownerEmail);
+      const [slots, bookings] = await Promise.all([
+        ParkrStore.listOwnerSlots(ownerId, ownerEmail),
+        ParkrStore.listBookings({ ownerId, ownerEmail })
+      ]);
       if (!slots || !slots.length) {
-        target.innerHTML = '<tr><td colspan="7" class="muted" style="text-align: center; padding: 24px 14px;">No parking slots found.</td></tr>';
+        target.innerHTML = '<tr><td colspan="8" class="muted" style="text-align: center; padding: 24px 14px;">No parking slots found.</td></tr>';
         return;
       }
+      const paidBookings = (bookings || []).filter((b) => paymentStatus(b) === "paid");
       target.innerHTML = slots.map((slot, index) => {
         const displayStatus = slot.verificationStatus || slot.status;
+        const slotBookings = paidBookings.filter((b) => b.slotId === slot.id || b.slotId === slot.slotId || b.slot === slot.name);
+        const slotRevenue = slotBookings.reduce((sum, b) => sum + Number(b.amount || 0), 0);
         return `
           <tr>
             <td>${ParkrUtils.displayId(slot, "SL", index)}</td>
-            <td>${h(slot.name)}</td>
+            <td><strong>${h(slot.name)}</strong></td>
             <td>${h(slot.vehicleType || slot.vehicle)}</td>
-            <td>${ParkrUtils.formatCurrency(slot.price)}</td>
+            <td>${ParkrUtils.formatCurrency(slot.price)}/hr</td>
             <td>${slot.available} / ${slot.total}</td>
+            <td><strong style="color: #4ade80;">${ParkrUtils.formatCurrency(slotRevenue)}</strong></td>
             <td><span class="status ${statusClass(displayStatus)}">${h(displayStatus)}</span></td>
             <td class="inline-actions">
               <button class="btn btn-secondary btn-small" type="button" data-edit-slot="${attr(slot.id)}">Edit</button>
@@ -60,7 +67,7 @@
       }).join("");
     } catch (err) {
       console.warn("Failed to load owner slots:", err);
-      target.innerHTML = '<tr><td colspan="7" class="muted" style="text-align: center; padding: 24px 14px;">No parking slots found.</td></tr>';
+      target.innerHTML = '<tr><td colspan="8" class="muted" style="text-align: center; padding: 24px 14px;">No parking slots found.</td></tr>';
     }
   }
 
@@ -87,7 +94,7 @@
           <td>${h(booking.driver)}</td>
           <td>${h(booking.slot)}</td>
           <td>${h(booking.date || booking.bookingDate)}</td>
-          <td>${ParkrUtils.formatCurrency(booking.amount)}</td>
+          <td><strong>${ParkrUtils.formatCurrency(booking.amount)}</strong></td>
           <td><span class="status ${statusClass(paymentStatus(booking))}">${h(paymentStatus(booking))}</span></td>
         </tr>
       `).join("");
@@ -95,6 +102,30 @@
       console.warn("Failed to load owner bookings:", err);
       target.innerHTML = '<tr><td colspan="6" class="muted" style="text-align: center; padding: 24px 14px;">No bookings yet.</td></tr>';
     }
+  }
+
+  function renderRevenueProgress(paidBookings, selector) {
+    const target = document.querySelector(selector);
+    if (!target) return;
+    if (!paidBookings || !paidBookings.length) {
+      target.innerHTML = '<div class="empty-state"><div><h3>No booking revenue yet</h3><p>Revenue appears when drivers book and pay for your parking spaces.</p></div></div>';
+      return;
+    }
+    const revenueBySlot = paidBookings.reduce((map, booking) => {
+      const name = booking.slot || "Parking slot";
+      map[name] = (map[name] || 0) + Number(booking.amount || 0);
+      return map;
+    }, {});
+    const max = Math.max(...Object.values(revenueBySlot), 1);
+    target.innerHTML = Object.entries(revenueBySlot).map(([name, amount]) => {
+      const percent = Math.max(Math.round((amount / max) * 100), 5);
+      return `
+        <div class="progress-row">
+          <div class="progress-label"><span>${h(name)}</span><strong>${ParkrUtils.formatCurrency(amount)}</strong></div>
+          <div class="progress-track"><span style="width:${percent}%"></span></div>
+        </div>
+      `;
+    }).join("");
   }
 
   async function initDashboard() {
@@ -109,12 +140,23 @@
       ]);
       const currentBookings = bookings || [];
       const currentSlots = slots || [];
-      const earnings = currentBookings.filter((booking) => paymentStatus(booking) === "paid").reduce((total, booking) => total + Number(booking.amount || 0), 0);
+      const paidBookings = currentBookings.filter((booking) => paymentStatus(booking) === "paid");
+      const earnings = paidBookings.reduce((total, booking) => total + Number(booking.amount || 0), 0);
+      const netProfit = Math.round(earnings * 0.9);
+      const platformFee = earnings - netProfit;
+      const avgBooking = paidBookings.length ? Math.round(earnings / paidBookings.length) : 0;
       const totalSlots = currentSlots.reduce((total, slot) => total + Number(slot.total || 0), 0);
-      ParkrUtils.setText("[data-owner-slots]", totalSlots);
+
+      ParkrUtils.setText("[data-owner-slots]", currentSlots.length);
       ParkrUtils.setText("[data-owner-bookings]", currentBookings.length);
       ParkrUtils.setText("[data-owner-earnings]", ParkrUtils.formatCurrency(earnings));
-      ParkrUtils.setText("[data-owner-rating]", "0");
+      ParkrUtils.setText("[data-owner-net-profit]", ParkrUtils.formatCurrency(netProfit));
+      ParkrUtils.setText("#ownerProfitGross", ParkrUtils.formatCurrency(earnings));
+      ParkrUtils.setText("#ownerProfitFee", "- " + ParkrUtils.formatCurrency(platformFee));
+      ParkrUtils.setText("#ownerProfitNet", ParkrUtils.formatCurrency(netProfit));
+      ParkrUtils.setText("#ownerAvgBooking", ParkrUtils.formatCurrency(avgBooking));
+
+      renderRevenueProgress(paidBookings, "#ownerRevenueRows");
       renderOwnerBookings("#ownerRecentBookings");
       renderOccupancy(currentSlots);
     } catch (err) {
@@ -122,7 +164,7 @@
       ParkrUtils.setText("[data-owner-slots]", "0");
       ParkrUtils.setText("[data-owner-bookings]", "0");
       ParkrUtils.setText("[data-owner-earnings]", ParkrUtils.formatCurrency(0));
-      ParkrUtils.setText("[data-owner-rating]", "0");
+      ParkrUtils.setText("[data-owner-net-profit]", ParkrUtils.formatCurrency(0));
       renderOwnerBookings("#ownerRecentBookings");
       renderOccupancy([]);
     }
@@ -387,6 +429,65 @@
     renderOwnerBookings("#ownerBookingRows");
   }
 
+  async function initRevenue() {
+    const owner = currentOwner();
+    if (!owner) return;
+    const ownerId = ownerIdOf(owner);
+    const ownerEmail = (owner.email || "").toLowerCase();
+    try {
+      const [slots, bookings] = await Promise.all([
+        ParkrStore.listOwnerSlots(ownerId, ownerEmail),
+        ParkrStore.listBookings({ ownerId, ownerEmail })
+      ]);
+      const currentBookings = bookings || [];
+      const currentSlots = slots || [];
+      const paidBookings = currentBookings.filter((b) => paymentStatus(b) === "paid");
+      const earnings = paidBookings.reduce((total, b) => total + Number(b.amount || 0), 0);
+      const netProfit = Math.round(earnings * 0.9);
+      const platformFee = earnings - netProfit;
+
+      ParkrUtils.setText("#revTotalEarnings", ParkrUtils.formatCurrency(earnings));
+      ParkrUtils.setText("#revPlatformFee", "- " + ParkrUtils.formatCurrency(platformFee));
+      ParkrUtils.setText("#revNetProfit", ParkrUtils.formatCurrency(netProfit));
+      ParkrUtils.setText("#revPaidCount", paidBookings.length);
+
+      renderRevenueProgress(paidBookings, "#ownerDetailedRevenueRows");
+
+      const matrixTarget = document.querySelector("#ownerSlotProfitList");
+      if (matrixTarget) {
+        if (!currentSlots.length) {
+          matrixTarget.innerHTML = '<div class="empty-state"><div><h3>No slots registered</h3><p>Add parking spaces to see profitability metrics.</p></div></div>';
+        } else {
+          matrixTarget.innerHTML = currentSlots.map((slot) => {
+            const slotName = slot.name || "Slot";
+            const slotBookings = paidBookings.filter((b) => {
+              const bSlotId = b.slotId || b.slot_id;
+              const bSlotName = b.slot || b.slotName;
+              return (bSlotId && String(bSlotId) === String(slot.id)) ||
+                     (bSlotName && bSlotName.toLowerCase() === slotName.toLowerCase());
+            });
+            const slotRevenue = slotBookings.reduce((acc, b) => acc + Number(b.amount || 0), 0);
+            const slotNetProfit = Math.round(slotRevenue * 0.9);
+            return `
+              <div class="list-item" style="padding: 12px 14px; border-bottom: 1px solid var(--border, rgba(255,255,255,0.08)); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <strong style="display: block; font-size: 0.95rem; color: var(--text, #f8fafc);">${h(slotName)}</strong>
+                  <span class="muted" style="font-size: 0.8rem;">${slotBookings.length} paid bookings · Rs. ${slot.price || 0}/hr</span>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-weight: 700; color: #4ade80; font-size: 0.95rem;">+${ParkrUtils.formatCurrency(slotNetProfit)}</div>
+                  <div class="muted" style="font-size: 0.75rem;">Gross: ${ParkrUtils.formatCurrency(slotRevenue)}</div>
+                </div>
+              </div>
+            `;
+          }).join("");
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to load owner revenue analytics:", err);
+    }
+  }
+
   async function initProfile() {
     const form = document.querySelector("#ownerProfileForm");
     const user = currentOwner();
@@ -422,6 +523,7 @@
       "add-slot": "view-add-slot",
       "manage-slots": "view-manage-slots",
       bookings: "view-bookings",
+      revenue: "view-revenue",
       profile: "view-profile"
     };
 
@@ -440,12 +542,24 @@
     else if (activeKey === "add-slot") initAddSlot();
     else if (activeKey === "manage-slots") initManageSlots();
     else if (activeKey === "bookings") initBookings();
+    else if (activeKey === "revenue") initRevenue();
     else if (activeKey === "profile") initProfile();
   }
 
   document.addEventListener("DOMContentLoaded", () => {
     const page = document.body.dataset.page;
     if (!page || !page.startsWith("owner")) return;
+
+    const refreshRevBtn = document.querySelector("#refreshOwnerRevenueBtn");
+    if (refreshRevBtn) {
+      refreshRevBtn.addEventListener("click", () => {
+        initRevenue();
+        if (typeof Parkr !== "undefined" && Parkr.showToast) {
+          Parkr.showToast("Revenue analytics refreshed");
+        }
+      });
+    }
+
     if (page === "owner-hub") {
       routeView();
       window.addEventListener("hashchange", routeView);
@@ -455,6 +569,7 @@
     if (page === "owner-add-slot") initAddSlot();
     if (page === "owner-manage-slots") initManageSlots();
     if (page === "owner-bookings") initBookings();
+    if (page === "owner-revenue") initRevenue();
     if (page === "owner-profile") initProfile();
   });
 })();

@@ -780,10 +780,11 @@
     }
 
     return (allSlots || []).filter((slot) => {
-      if (settings.ownerId) {
-        const matchId = String(slot.ownerId || "") === String(settings.ownerId);
+      if (settings.ownerId || settings.ownerEmail) {
+        const matchId = settings.ownerId && String(slot.ownerId || "") === String(settings.ownerId);
         const matchEmail = settings.ownerEmail && slot.ownerEmail && String(slot.ownerEmail).toLowerCase() === String(settings.ownerEmail).toLowerCase();
-        if (!matchId && !matchEmail) return false;
+        const isUnassigned = !slot.ownerId || slot.ownerId === "public" || slot.owner === "Public Parking Authority";
+        if (!matchId && !matchEmail && !isUnassigned) return false;
       }
       if (settings.adminOnly) return true;
       if (settings.publicOnly) {
@@ -975,11 +976,12 @@
         return matchId || matchEmail;
       });
     }
-    if (settings.ownerId) {
+    if (settings.ownerId || settings.ownerEmail) {
       rows = rows.filter((booking) => {
-        const matchId = String(booking.ownerId || "") === String(settings.ownerId);
+        const matchId = settings.ownerId && String(booking.ownerId || "") === String(settings.ownerId);
         const matchEmail = settings.ownerEmail && booking.ownerEmail && String(booking.ownerEmail).toLowerCase() === String(settings.ownerEmail).toLowerCase();
-        return matchId || matchEmail;
+        const isUnassigned = !booking.ownerId;
+        return matchId || matchEmail || isUnassigned;
       });
     }
     return rows;

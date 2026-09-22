@@ -173,6 +173,7 @@
         <a href="#add-slot" class="sidebar-link" data-nav="add-slot">Add Slot</a>
         <a href="#manage-slots" class="sidebar-link" data-nav="manage-slots">Manage Slots</a>
         <a href="#bookings" class="sidebar-link" data-nav="bookings">Bookings</a>
+        <a href="#revenue" class="sidebar-link" data-nav="revenue">Revenue & Profit</a>
         <a href="#profile" class="sidebar-link" data-nav="profile">Profile</a>
       </nav>
       <div class="sidebar-footer">
@@ -188,16 +189,45 @@
           <div>
             <span class="eyebrow">Owner workspace</span>
             <h1>Welcome, <span data-user-name>Owner</span>.</h1>
-            <p>Monitor slot availability, earnings, and new reservations.</p>
+            <p>Monitor slot availability, revenue, net profit, and reservations.</p>
           </div>
           <a class="btn btn-primary" href="#add-slot">Add Slot</a>
         </header>
 
         <section class="stat-grid" aria-label="Owner statistics">
-          <article class="metric-card"><span>Total slots</span><strong data-owner-slots>0</strong></article>
-          <article class="metric-card"><span>Bookings</span><strong data-owner-bookings>0</strong></article>
-          <article class="metric-card"><span>Earnings</span><strong data-owner-earnings>Rs. 0</strong></article>
-          <article class="metric-card"><span>Rating</span><strong data-owner-rating>0</strong></article>
+          <article class="metric-card"><span>Total Slots</span><strong data-owner-slots>0</strong></article>
+          <article class="metric-card"><span>Total Bookings</span><strong data-owner-bookings>0</strong></article>
+          <article class="metric-card"><span>Gross Revenue</span><strong data-owner-earnings>Rs. 0</strong></article>
+          <article class="metric-card"><span>Net Profit (90%)</span><strong data-owner-net-profit style="color: #4ade80;">Rs. 0</strong></article>
+        </section>
+
+        <!-- Revenue by Slot & Financial Breakdown -->
+        <section class="content-grid section">
+          <article class="data-panel">
+            <div class="panel-header">
+              <div>
+                <h2>Revenue by Slot</h2>
+                <p class="muted">Live gross revenue generated across each of your parking spaces.</p>
+              </div>
+              <a class="btn btn-secondary btn-small" href="#revenue">Full Analytics</a>
+            </div>
+            <div class="progress-list" id="ownerRevenueRows"></div>
+          </article>
+
+          <aside class="data-panel">
+            <h2>Profit & Payout Summary</h2>
+            <div class="summary-strip">
+              <div class="summary-item"><span>Gross Revenue</span><strong id="ownerProfitGross">Rs. 0</strong></div>
+              <div class="summary-item"><span>Platform Fee (10%)</span><strong id="ownerProfitFee" class="muted">- Rs. 0</strong></div>
+              <div class="summary-item"><span>Net Take-Home</span><strong id="ownerProfitNet" style="color: #4ade80;">Rs. 0</strong></div>
+            </div>
+            <div class="divider"></div>
+            <div class="summary-strip">
+              <div class="summary-item"><span>Avg Booking</span><strong id="ownerAvgBooking">Rs. 0</strong></div>
+              <div class="summary-item"><span>Payout Status</span><strong class="status approved">Active</strong></div>
+              <div class="summary-item"><span>Settlement</span><strong>Direct Transfer</strong></div>
+            </div>
+          </aside>
         </section>
 
         <section class="content-grid section">
@@ -304,7 +334,7 @@
         <section class="data-panel">
           <div class="table-wrap">
             <table class="data-table">
-              <thead><tr><th>ID</th><th>Name</th><th>Vehicle</th><th>Rate</th><th>Available</th><th>Status</th><th>Action</th></tr></thead>
+              <thead><tr><th>ID</th><th>Name</th><th>Vehicle</th><th>Rate</th><th>Available</th><th>Revenue</th><th>Status</th><th>Action</th></tr></thead>
               <tbody id="ownerSlotRows"></tbody>
             </table>
           </div>
@@ -331,7 +361,39 @@
         </section>
       </div>
 
-      <!-- 5. PROFILE VIEW -->
+      <!-- 5. REVENUE & PROFIT VIEW -->
+      <div class="view-section" id="view-revenue">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Financial analytics</span>
+            <h1>Revenue & Profit</h1>
+            <p>Comprehensive earnings breakdown, net profits, and slot financial performance.</p>
+          </div>
+          <button class="btn btn-secondary btn-small" type="button" id="refreshOwnerRevenueBtn">Refresh Analytics</button>
+        </header>
+
+        <section class="stat-grid">
+          <article class="metric-card"><span>Gross Collected</span><strong id="revTotalEarnings">Rs. 0</strong></article>
+          <article class="metric-card"><span>Platform Fee (10%)</span><strong id="revPlatformFee" class="muted">- Rs. 0</strong></article>
+          <article class="metric-card"><span>Net Take-Home Profit</span><strong id="revNetProfit" style="color: #4ade80;">Rs. 0</strong></article>
+          <article class="metric-card"><span>Paid Reservations</span><strong id="revPaidCount">0</strong></article>
+        </section>
+
+        <section class="content-grid section">
+          <article class="data-panel">
+            <h2>Revenue by Slot</h2>
+            <p class="muted">Live earnings distribution across each parking location.</p>
+            <div class="progress-list" id="ownerDetailedRevenueRows"></div>
+          </article>
+
+          <aside class="data-panel">
+            <h2>Slot Profitability Matrix</h2>
+            <div class="list" id="ownerSlotProfitList"></div>
+          </aside>
+        </section>
+      </div>
+
+      <!-- 6. PROFILE VIEW -->
       <div class="view-section" id="view-profile">
         <header class="topbar">
           <div>

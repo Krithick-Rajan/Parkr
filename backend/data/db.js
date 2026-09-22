@@ -29,8 +29,9 @@ const initialData = {
       rating: 4.8,
       open: "06:00",
       close: "23:00",
-      ownerId: "",
-      owner: "Public Parking Authority",
+      ownerId: "USR-002",
+      owner: "Sri",
+      ownerEmail: "sri@parkr.com",
       features: ["CCTV", "Covered", "Security Guard", "EV Charging"]
     },
     {
@@ -56,8 +57,9 @@ const initialData = {
       rating: 4.6,
       open: "07:00",
       close: "22:00",
-      ownerId: "",
-      owner: "Public Parking Authority",
+      ownerId: "USR-002",
+      owner: "Sri",
+      ownerEmail: "sri@parkr.com",
       features: ["CCTV", "Well Lit", "Easy Exit"]
     },
     {
@@ -83,8 +85,9 @@ const initialData = {
       rating: 4.9,
       open: "08:00",
       close: "23:59",
-      ownerId: "",
-      owner: "Public Parking Authority",
+      ownerId: "USR-002",
+      owner: "Sri",
+      ownerEmail: "sri@parkr.com",
       features: ["Valet Assistance", "Covered", "CCTV", "24/7 Access"]
     }
   ],

@@ -200,9 +200,20 @@
               <div class="summary-item"><span>Payment</span><strong>Paid by driver</strong></div>
             </div>
             <div class="divider"></div>
-            <div class="test-card-box" id="paymentMethodDetails">
-              <span class="map-badge" style="margin-bottom: 6px; display: inline-block;">100% Free · No Trial Period</span>
-              <p style="font-size: 0.85rem; margin: 4px 0 0 0;" id="paymentDetailText">📱 <strong>UPI ID:</strong> parkr.test@upi · Instant verification</p>
+            <div class="payment-preview-card" id="paymentMethodDetails">
+              <div class="payment-channel-header">
+                <div class="payment-channel-left">
+                  <div class="payment-channel-icon" id="paymentChannelIcon"></div>
+                  <div>
+                    <span class="payment-channel-title" id="paymentChannelTitle">Cash on Arrival</span>
+                    <span class="payment-channel-badge" id="paymentChannelBadge">Instant Spot Hold</span>
+                  </div>
+                </div>
+              </div>
+              <p class="payment-channel-desc" id="paymentDetailText">Spot reservation is confirmed immediately. Pay at the parking counter upon entry.</p>
+              <div class="payment-channel-meta" id="paymentChannelMeta">
+                <span class="payment-meta-tag" id="paymentMetaPill">Zero Convenience Fee · Instant Confirmation</span>
+              </div>
             </div>
             <p class="muted">Your payment is verified, recorded with the booking, and emailed immediately.</p>
           </aside>

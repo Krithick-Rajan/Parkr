@@ -250,17 +250,39 @@
 
     const paymentModeSelect = document.querySelector("#paymentMode");
     const paymentDetailText = document.querySelector("#paymentDetailText");
+    const paymentChannelIcon = document.querySelector("#paymentChannelIcon");
+    const paymentChannelTitle = document.querySelector("#paymentChannelTitle");
+    const paymentChannelBadge = document.querySelector("#paymentChannelBadge");
+    const paymentMetaPill = document.querySelector("#paymentMetaPill");
+
     const updatePaymentInfo = () => {
-      if (!paymentDetailText || !paymentModeSelect) return;
+      if (!paymentModeSelect) return;
       const mode = paymentModeSelect.value;
+
       if (mode === "UPI") {
-        paymentDetailText.innerHTML = "📱 <strong>UPI ID:</strong> parkr.test@upi · Instant QR verification (100% Free)";
+        if (paymentChannelIcon) paymentChannelIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>`;
+        if (paymentChannelTitle) paymentChannelTitle.textContent = "UPI Instant Payment";
+        if (paymentChannelBadge) paymentChannelBadge.textContent = "Instant Verification";
+        if (paymentDetailText) paymentDetailText.textContent = "Zero-fee digital payment. Instant automated verification upon booking confirmation.";
+        if (paymentMetaPill) paymentMetaPill.textContent = "VPA: parkr.pay@upi · 0% Convenience Fee";
       } else if (mode === "Card") {
-        paymentDetailText.innerHTML = "💳 <strong>Test Card:</strong> 4111 1111 1111 1111 · Exp: 12/28 · CVV: 123 (Zero Fee)";
+        if (paymentChannelIcon) paymentChannelIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`;
+        if (paymentChannelTitle) paymentChannelTitle.textContent = "Credit / Debit Card";
+        if (paymentChannelBadge) paymentChannelBadge.textContent = "Sandbox Verified";
+        if (paymentDetailText) paymentDetailText.textContent = "Secure instant card processing with automated 3D-Secure transaction simulation.";
+        if (paymentMetaPill) paymentMetaPill.textContent = "Card: 4111 •••• •••• 1111 · Exp: 12/28";
       } else if (mode === "Cash") {
-        paymentDetailText.innerHTML = "💵 <strong>Cash on Arrival:</strong> Pay at the slot counter. Immediate spot reservation.";
+        if (paymentChannelIcon) paymentChannelIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>`;
+        if (paymentChannelTitle) paymentChannelTitle.textContent = "Cash on Arrival";
+        if (paymentChannelBadge) paymentChannelBadge.textContent = "Pay at Counter";
+        if (paymentDetailText) paymentDetailText.textContent = "Spot is reserved immediately. Present your booking ID and complete payment at the slot entry counter.";
+        if (paymentMetaPill) paymentMetaPill.textContent = "Instant Spot Hold · Gate Verification";
       } else {
-        paymentDetailText.innerHTML = "🏦 <strong>Bank Transfer:</strong> Instant IMPS/NEFT reference generated.";
+        if (paymentChannelIcon) paymentChannelIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 6 12 3 19 6"/><line x1="4" y1="10" x2="4" y2="21"/><line x1="20" y1="10" x2="20" y2="21"/><line x1="8" y1="14" x2="8" y2="17"/><line x1="12" y1="14" x2="12" y2="17"/><line x1="16" y1="14" x2="16" y2="17"/></svg>`;
+        if (paymentChannelTitle) paymentChannelTitle.textContent = "Direct Bank Transfer";
+        if (paymentChannelBadge) paymentChannelBadge.textContent = "IMPS / NEFT";
+        if (paymentDetailText) paymentDetailText.textContent = "Direct institutional transfer with automated reference reconciliation and immediate spot reservation.";
+        if (paymentMetaPill) paymentMetaPill.textContent = "Ref: PARKR-INSTANT · Auto Reconciled";
       }
     };
     if (paymentModeSelect) {
