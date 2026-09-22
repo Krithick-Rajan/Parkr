@@ -52,8 +52,8 @@
 
     const validSlots = (slots || []).map((s, idx) => ({
       ...s,
-      lat: Number(s.lat) || 12.9716 + ((idx % 4) * 0.015) - 0.02,
-      lng: Number(s.lng) || 77.5946 + ((idx % 3) * 0.02) - 0.01
+      lat: (s.lat !== undefined && s.lat !== null && !isNaN(Number(s.lat))) ? Number(s.lat) : (12.9716 + ((idx % 4) * 0.015) - 0.02),
+      lng: (s.lng !== undefined && s.lng !== null && !isNaN(Number(s.lng))) ? Number(s.lng) : (77.5946 + ((idx % 3) * 0.02) - 0.01)
     }));
 
     const center = validSlots.length ? [validSlots[0].lat, validSlots[0].lng] : [12.9716, 77.5946];
@@ -64,6 +64,7 @@
       maxZoom: 19
     }).addTo(searchMapInstance);
 
+    const markers = [];
     validSlots.forEach((slot) => {
       const marker = L.marker([slot.lat, slot.lng]).addTo(searchMapInstance);
       const popupHtml = `
@@ -75,7 +76,17 @@
         </div>
       `;
       marker.bindPopup(popupHtml);
+      markers.push(marker);
     });
+
+    if (markers.length > 1) {
+      try {
+        const group = L.featureGroup(markers);
+        searchMapInstance.fitBounds(group.getBounds().pad(0.12));
+      } catch (e) {}
+    } else if (markers.length === 1) {
+      searchMapInstance.setView([validSlots[0].lat, validSlots[0].lng], 13);
+    }
 
     setTimeout(() => {
       if (searchMapInstance) searchMapInstance.invalidateSize();
@@ -91,10 +102,10 @@
       detailMapInstance = null;
     }
 
-    const lat = Number(slot.lat) || 12.9716;
-    const lng = Number(slot.lng) || 77.5946;
+    const lat = (slot.lat !== undefined && slot.lat !== null && !isNaN(Number(slot.lat))) ? Number(slot.lat) : 12.9716;
+    const lng = (slot.lng !== undefined && slot.lng !== null && !isNaN(Number(slot.lng))) ? Number(slot.lng) : 77.5946;
 
-    detailMapInstance = L.map("slotDetailMap").setView([lat, lng], 14);
+    detailMapInstance = L.map("slotDetailMap").setView([lat, lng], 15);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; OpenStreetMap',

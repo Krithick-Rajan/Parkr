@@ -12,6 +12,8 @@
   <link rel="stylesheet" href="assets/css/components.css?v=2">
   <link rel="stylesheet" href="assets/css/dashboard.css?v=2">
   <link rel="stylesheet" href="assets/css/responsive.css?v=2">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="assets/js/utils.js?v=2" defer></script>
   <script src="assets/js/models.js?v=2" defer></script>
   <script src="assets/js/store.js?v=2" defer></script>
@@ -272,7 +274,41 @@
               <div class="field"><label for="slotOpen">Opening time</label><input id="slotOpen" name="open" type="time" required></div>
               <div class="field"><label for="slotClose">Closing time</label><input id="slotClose" name="close" type="time" required></div>
             </div>
-            <div class="field"><label for="slotAddress">Full address</label><textarea id="slotAddress" name="address" required placeholder="Street, landmark, city"></textarea></div>
+            <div class="field">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label for="slotAddress" style="margin-bottom: 0;">Full address</label>
+                <div style="display: flex; gap: 8px;">
+                  <button type="button" class="btn btn-secondary btn-small" id="locateAddressBtn" style="padding: 4px 10px; font-size: 0.78rem;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+                    Locate on Map
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-small" id="useGpsBtn" style="padding: 4px 10px; font-size: 0.78rem;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
+                    Use GPS
+                  </button>
+                </div>
+              </div>
+              <textarea id="slotAddress" name="address" required placeholder="e.g. Sridevi Nagar, Coimbatore or MG Road, Bengaluru"></textarea>
+            </div>
+
+            <!-- Dynamic Interactive Map Location Picker -->
+            <div class="field" style="margin-top: 4px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-size: 0.85rem; font-weight: 600; color: #f8fafc; display: flex; align-items: center; gap: 6px;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  Dynamic Map Location (Click or Drag Pin)
+                </span>
+                <span id="mapGeocodeStatus" style="font-size: 0.78rem; color: #38bdf8;">Interactive map active</span>
+              </div>
+              <div id="slotPickerMap" style="height: 250px; width: 100%; border-radius: 12px; border: 1.5px solid rgba(255,255,255,0.12); overflow: hidden; background: #0b1120; position: relative; z-index: 1;"></div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 0.78rem; color: #94a3b8;">
+                <span id="coordinatesDisplay">📍 Coordinates: 11.0168, 76.9558</span>
+                <span style="color: #4ade80;">✓ Dynamically saved with slot</span>
+              </div>
+              <input type="hidden" id="slotLat" name="lat" value="11.0168">
+              <input type="hidden" id="slotLng" name="lng" value="76.9558">
+            </div>
+
             <div class="field">
               <label for="slotPhoto">Slot photo <span class="muted font-normal" style="font-weight: 400; font-size: 0.85rem;">(Optional)</span></label>
               <input id="slotPhoto" name="photo" type="file" accept="image/*" style="display: none !important;">
@@ -305,7 +341,7 @@
                 </div>
               </div>
             </div>
-            <button class="btn btn-primary" type="submit">Submit for Verification</button>
+            <button class="btn btn-primary" type="submit" id="submitSlotBtn">Submit for Verification</button>
           </form>
 
           <aside class="data-panel">

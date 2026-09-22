@@ -58,7 +58,14 @@ router.post("/", (req, res) => {
   const db = readDb();
   const slots = db.slots || [];
   const count = slots.length + 1;
-  const slotId = "SL-" + String(count).padStart(3, "0");
+  const slotId = req.body.id || req.body.slotId || ("SL-" + String(count).padStart(3, "0"));
+
+  const lat = (req.body.lat !== undefined && req.body.lat !== null && !isNaN(Number(req.body.lat)))
+    ? Number(req.body.lat)
+    : 12.9716;
+  const lng = (req.body.lng !== undefined && req.body.lng !== null && !isNaN(Number(req.body.lng)))
+    ? Number(req.body.lng)
+    : 77.5946;
 
   const newSlot = {
     id: slotId,
@@ -67,29 +74,35 @@ router.post("/", (req, res) => {
     name: req.body.name || "Parking Slot",
     location: req.body.location || req.body.address || "Bengaluru",
     address: req.body.address || req.body.location || "",
-    lat: Number(req.body.lat) || 12.9716 + (Math.random() - 0.5) * 0.05,
-    lng: Number(req.body.lng) || 77.5946 + (Math.random() - 0.5) * 0.05,
+    lat,
+    lng,
     price: Number(req.body.price) || 40,
     pricePerHour: Number(req.body.price) || 40,
     vehicle: req.body.vehicle || req.body.vehicleType || "Car",
     vehicleType: req.body.vehicleType || req.body.vehicle || "Car",
     total: Number(req.body.total) || 10,
     totalSlots: Number(req.body.total) || 10,
-    available: Number(req.body.total) || 10,
-    availableSlots: Number(req.body.total) || 10,
+    available: Number(req.body.available ?? req.body.total) || 10,
+    availableSlots: Number(req.body.availableSlots ?? req.body.total) || 10,
     open: req.body.open || "06:00",
     close: req.body.close || "23:00",
     ownerId: req.body.ownerId || "",
+    ownerEmail: req.body.ownerEmail || "",
     owner: req.body.owner || "Parking Owner",
     imageUrl: req.body.imageUrl || "",
-    status: "pending",
-    verificationStatus: "pending",
-    availabilityStatus: "unavailable",
-    rating: 5.0,
-    features: ["CCTV", "Covered Parking"]
+    status: req.body.status || "pending",
+    verificationStatus: req.body.verificationStatus || "pending",
+    availabilityStatus: req.body.availabilityStatus || "unavailable",
+    rating: Number(req.body.rating) || 5.0,
+    features: Array.isArray(req.body.features) ? req.body.features : ["CCTV", "Covered Parking"]
   };
 
-  slots.unshift(newSlot);
+  const existingIdx = slots.findIndex((s) => s.id === slotId || s.slotId === slotId);
+  if (existingIdx >= 0) {
+    slots[existingIdx] = { ...slots[existingIdx], ...newSlot };
+  } else {
+    slots.unshift(newSlot);
+  }
   db.slots = slots;
   writeDb(db);
 

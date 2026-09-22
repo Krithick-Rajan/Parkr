@@ -75,10 +75,13 @@ import { firebaseConfig, isFirebaseConfigured } from "../../firebase/firebase-co
     async function saveRecord(collectionName, row) {
       const recordId = String(idOf(row));
       try {
-        await firestoreSdk.setDoc(
-          firestoreSdk.doc(db, collectionName, recordId),
-          { ...row, id: recordId, updatedAt: new Date().toISOString() },
-          { merge: true }
+        await withTimeout(
+          firestoreSdk.setDoc(
+            firestoreSdk.doc(db, collectionName, recordId),
+            { ...row, id: recordId, updatedAt: new Date().toISOString() },
+            { merge: true }
+          ),
+          2500
         );
       } catch (err) {
         console.warn(`[Firestore] Cloud write to '${collectionName}' failed (${err.message}). Using persistent local fallback:`, err);
@@ -89,12 +92,15 @@ import { firebaseConfig, isFirebaseConfigured } from "../../firebase/firebase-co
 
     async function updateRecord(collectionName, id, changes) {
       try {
-        await firestoreSdk.updateDoc(
-          firestoreSdk.doc(db, collectionName, id),
-          { ...(changes || {}), updatedAt: new Date().toISOString() }
+        await withTimeout(
+          firestoreSdk.updateDoc(
+            firestoreSdk.doc(db, collectionName, id),
+            { ...(changes || {}), updatedAt: new Date().toISOString() }
+          ),
+          2500
         );
-        const snapshot = await firestoreSdk.getDoc(firestoreSdk.doc(db, collectionName, id));
-        return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
+        const snapshot = await withTimeout(firestoreSdk.getDoc(firestoreSdk.doc(db, collectionName, id)), 1200);
+        return snapshot && snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
       } catch (err) {
         console.warn(`[Firestore] Cloud update to '${collectionName}' failed (${err.message}):`, err);
         return { id, ...(changes || {}) };
@@ -301,8 +307,8 @@ import { firebaseConfig, isFirebaseConfigured } from "../../firebase/firebase-co
     async function uploadFile(folder, file) {
       if (!storageSdk) {
         try {
-          storageSdk = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js");
-          storage = storageSdk.getStorage(app);
+          storageSdk = await withTimeout(import("https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js"), 2000);
+          storage = storageSdk ? storageSdk.getStorage(app) : null;
         } catch (e) {
           storage = null;
           storageSdk = null;
@@ -311,8 +317,9 @@ import { firebaseConfig, isFirebaseConfigured } from "../../firebase/firebase-co
       if (storage && storageSdk) {
         try {
           const fileRef = storageSdk.ref(storage, `${folder}/${Date.now()}_${file.name}`);
-          const snapshot = await storageSdk.uploadBytes(fileRef, file);
-          return await storageSdk.getDownloadURL(snapshot.ref);
+          const uploadPromise = storageSdk.uploadBytes(fileRef, file).then((snapshot) => storageSdk.getDownloadURL(snapshot.ref));
+          const downloadUrl = await withTimeout(uploadPromise, 3000);
+          if (downloadUrl) return downloadUrl;
         } catch (err) {
           console.warn("[Firebase Storage] Upload fallback to DataURL:", err.message);
         }

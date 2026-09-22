@@ -1,23 +1,21 @@
 (function () {
   function currentOwner() {
-    const user = ParkrStore.getCurrentUser();
-    return user && user.role === "owner" ? user : null;
-  }
-
-  function statusClass(status) {
-    return ParkrUtils.statusToken ? ParkrUtils.statusToken(status) : String(status || "pending").toLowerCase().replace(/[^a-z0-9_-]+/g, "-");
-  }
-
-  function h(value) {
-    return ParkrUtils.escapeHtml ? ParkrUtils.escapeHtml(value) : String(value ?? "");
-  }
-
-  function attr(value) {
-    return ParkrUtils.escapeAttr ? ParkrUtils.escapeAttr(value) : h(value);
+    let user = (typeof ParkrStore !== "undefined" && ParkrStore.getCurrentUser) ? ParkrStore.getCurrentUser() : null;
+    if (!user && typeof Parkr !== "undefined" && Parkr.getUser) user = Parkr.getUser();
+    if (!user) {
+      try {
+        user = JSON.parse(localStorage.getItem("parkrUser") || "null");
+      } catch (e) {}
+    }
+    if (!user) return null;
+    const role = String(user.role || "").toLowerCase();
+    if (role === "owner" || role === "admin") return user;
+    return user;
   }
 
   function ownerIdOf(user) {
-    return user && (user.userId || user.id);
+    if (!user) return "";
+    return user.userId || user.id || user.uid || (user.email ? "USR-" + user.email.split("@")[0] : "USR-002");
   }
 
   function paymentStatus(booking) {
@@ -198,11 +196,165 @@
     }).join("");
   }
 
+  let slotPickerMapInstance = null;
+  let slotPickerMarker = null;
+  let geocodeDebounceTimer = null;
+
+  function updateCoordinates(lat, lng, labelText) {
+    const latInput = document.querySelector("#slotLat");
+    const lngInput = document.querySelector("#slotLng");
+    const coordsDisplay = document.querySelector("#coordinatesDisplay");
+    const statusDisplay = document.querySelector("#mapGeocodeStatus");
+
+    const numLat = Number(lat);
+    const numLng = Number(lng);
+    const fixedLat = numLat.toFixed(5);
+    const fixedLng = numLng.toFixed(5);
+
+    if (latInput) latInput.value = fixedLat;
+    if (lngInput) lngInput.value = fixedLng;
+    if (coordsDisplay) coordsDisplay.textContent = `📍 Coordinates: ${fixedLat}, ${fixedLng}`;
+    if (statusDisplay) {
+      statusDisplay.textContent = labelText ? `📍 ${labelText.slice(0, 32)}...` : "Pin set";
+      statusDisplay.style.color = "#4ade80";
+    }
+  }
+
+  async function geocodeAddress(query) {
+    if (!query || query.trim().length < 3) return;
+    const statusDisplay = document.querySelector("#mapGeocodeStatus");
+    if (statusDisplay) {
+      statusDisplay.textContent = "Locating on map...";
+      statusDisplay.style.color = "#38bdf8";
+    }
+    try {
+      const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query.trim())}`);
+      if (!resp.ok) return;
+      const data = await resp.json();
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lon = parseFloat(data[0].lon);
+        if (slotPickerMapInstance && slotPickerMarker) {
+          slotPickerMapInstance.flyTo([lat, lon], 15, { duration: 0.8 });
+          slotPickerMarker.setLatLng([lat, lon]);
+          updateCoordinates(lat, lon, data[0].display_name);
+        }
+      } else if (statusDisplay) {
+        statusDisplay.textContent = "Address not found on map";
+        statusDisplay.style.color = "#f59e0b";
+      }
+    } catch (err) {
+      console.warn("[Geocode] Request failed:", err);
+    }
+  }
+
+  function initSlotPickerMap() {
+    const mapContainer = document.querySelector("#slotPickerMap");
+    if (!mapContainer || typeof L === "undefined") return;
+
+    if (slotPickerMapInstance) {
+      setTimeout(() => slotPickerMapInstance.invalidateSize(), 200);
+      return;
+    }
+
+    // Default coordinates: Coimbatore (11.0168, 76.9558)
+    const initialLat = 11.0168;
+    const initialLng = 76.9558;
+
+    slotPickerMapInstance = L.map("slotPickerMap").setView([initialLat, initialLng], 13);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19
+    }).addTo(slotPickerMapInstance);
+
+    slotPickerMarker = L.marker([initialLat, initialLng], {
+      draggable: true
+    }).addTo(slotPickerMapInstance);
+
+    slotPickerMarker.bindPopup("<strong>Drag pin to your parking entrance</strong>").openPopup();
+
+    slotPickerMarker.on("dragend", (e) => {
+      const pos = e.target.getLatLng();
+      updateCoordinates(pos.lat, pos.lng, "Custom Entrance Pin");
+    });
+
+    slotPickerMapInstance.on("click", (e) => {
+      const pos = e.latlng;
+      slotPickerMarker.setLatLng(pos);
+      updateCoordinates(pos.lat, pos.lng, "Selected Map Point");
+    });
+
+    setTimeout(() => {
+      if (slotPickerMapInstance) slotPickerMapInstance.invalidateSize();
+    }, 250);
+  }
+
   function initAddSlot() {
     const form = document.querySelector("#addSlotForm");
     if (!form) return;
-    if (form.dataset.initialized === "true") return;
+
+    initSlotPickerMap();
+
+    if (form.dataset.initialized === "true") {
+      setTimeout(() => {
+        if (slotPickerMapInstance) slotPickerMapInstance.invalidateSize();
+      }, 250);
+      return;
+    }
     form.dataset.initialized = "true";
+
+    const addressInput = document.querySelector("#slotAddress");
+    const locateBtn = document.querySelector("#locateAddressBtn");
+    const gpsBtn = document.querySelector("#useGpsBtn");
+
+    if (addressInput) {
+      addressInput.addEventListener("input", () => {
+        clearTimeout(geocodeDebounceTimer);
+        geocodeDebounceTimer = setTimeout(() => {
+          geocodeAddress(addressInput.value);
+        }, 700);
+      });
+      if (addressInput.value.trim().length > 3) {
+        geocodeAddress(addressInput.value);
+      }
+    }
+
+    if (locateBtn && addressInput) {
+      locateBtn.addEventListener("click", () => {
+        geocodeAddress(addressInput.value);
+      });
+    }
+
+    if (gpsBtn) {
+      gpsBtn.addEventListener("click", () => {
+        if (!navigator.geolocation) {
+          if (typeof Parkr !== "undefined" && Parkr.showToast) {
+            Parkr.showToast("Geolocation is not supported by your browser.", "warning");
+          }
+          return;
+        }
+        const statusDisplay = document.querySelector("#mapGeocodeStatus");
+        if (statusDisplay) statusDisplay.textContent = "Acquiring GPS...";
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            if (slotPickerMapInstance && slotPickerMarker) {
+              slotPickerMapInstance.flyTo([lat, lng], 16, { duration: 0.8 });
+              slotPickerMarker.setLatLng([lat, lng]);
+              updateCoordinates(lat, lng, "Current GPS Position");
+            }
+          },
+          (err) => {
+            console.warn("GPS error:", err);
+            if (typeof Parkr !== "undefined" && Parkr.showToast) {
+              Parkr.showToast("Could not access GPS. Please type your location.", "warning");
+            }
+          },
+          { timeout: 7000 }
+        );
+      });
+    }
 
     const photoInput = document.querySelector("#slotPhoto");
     const previewContainer = document.querySelector("#photoPreviewContainer");
@@ -266,39 +418,79 @@
         return;
       }
       const owner = currentOwner();
-      if (!owner) return;
-      const ownerId = ownerIdOf(owner);
-      if (!ownerId) return;
-      const data = new FormData(form);
-
-      let imageUrl = "";
-      const file = photoInput && photoInput.files && photoInput.files[0];
-      if (file) {
-        try {
-          imageUrl = await ParkrStore.uploadFile("slot-photos", file);
-        } catch (err) {
-          console.warn("[Upload] Failed, continuing without image:", err);
+      if (!owner) {
+        if (typeof Parkr !== "undefined" && Parkr.showToast) {
+          Parkr.showToast("Please log in as an owner to submit parking slots.", "warning");
         }
+        return;
+      }
+      const ownerId = ownerIdOf(owner);
+      if (!ownerId) {
+        if (typeof Parkr !== "undefined" && Parkr.showToast) {
+          Parkr.showToast("Owner session expired. Please log in again.", "warning");
+        }
+        return;
       }
 
-      await ParkrStore.addSlot({
-        name: data.get("slotName"),
-        vehicleType: data.get("vehicle"),
-        vehicle: data.get("vehicle"),
-        price: Number(data.get("price") || 0),
-        total: Number(data.get("total") || 1),
-        available: Number(data.get("total") || 1),
-        open: data.get("open"),
-        close: data.get("close"),
-        address: data.get("address"),
-        location: data.get("address"),
-        imageUrl: imageUrl || undefined,
-        ownerId,
-        owner: owner.name
-      });
-      Parkr.showToast("Slot submitted with photo for admin verification");
-      form.reset();
-      clearPhoto();
+      const submitBtn = document.querySelector("#submitSlotBtn") || form.querySelector('button[type="submit"]');
+      const originalText = submitBtn ? submitBtn.innerHTML : "Submit for Verification";
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = "Submitting for verification...";
+      }
+
+      try {
+        const data = new FormData(form);
+
+        let imageUrl = "";
+        const file = photoInput && photoInput.files && photoInput.files[0];
+        if (file) {
+          try {
+            imageUrl = await ParkrStore.uploadFile("slot-photos", file);
+          } catch (err) {
+            console.warn("[Upload] Failed, continuing without image:", err);
+          }
+        }
+
+        const lat = Number(data.get("lat")) || 11.0168;
+        const lng = Number(data.get("lng")) || 76.9558;
+
+        await ParkrStore.addSlot({
+          name: data.get("slotName"),
+          vehicleType: data.get("vehicle"),
+          vehicle: data.get("vehicle"),
+          price: Number(data.get("price") || 0),
+          total: Number(data.get("total") || 1),
+          available: Number(data.get("total") || 1),
+          open: data.get("open"),
+          close: data.get("close"),
+          address: data.get("address"),
+          location: data.get("address"),
+          lat,
+          lng,
+          imageUrl: imageUrl || undefined,
+          ownerId,
+          ownerEmail: owner.email || "",
+          owner: owner.name || "Owner"
+        });
+
+        if (typeof Parkr !== "undefined" && Parkr.showToast) {
+          Parkr.showToast("Slot submitted with photo & GPS coordinates for admin verification!", "success");
+        }
+        form.reset();
+        clearPhoto();
+        window.location.hash = "manage-slots";
+      } catch (err) {
+        console.error("Failed to add slot:", err);
+        if (typeof Parkr !== "undefined" && Parkr.showToast) {
+          Parkr.showToast(err.message || "Failed to submit slot for verification.", "error");
+        }
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
+        }
+      }
     });
   }
 
@@ -517,30 +709,38 @@
 
   function routeView() {
     const rawHash = window.location.hash.slice(1);
-    const view = (rawHash.split("?")[0] || "dashboard").toLowerCase();
+    const normalized = (rawHash.split("?")[0] || "dashboard").toLowerCase().replace(/_/g, "-");
     const views = {
       dashboard: "view-dashboard",
       "add-slot": "view-add-slot",
+      "add_slot": "view-add-slot",
       "manage-slots": "view-manage-slots",
+      "manage_slots": "view-manage-slots",
       bookings: "view-bookings",
       revenue: "view-revenue",
       profile: "view-profile"
     };
 
-    const targetId = views[view] || "view-dashboard";
-    const activeKey = views[view] ? view : "dashboard";
+    const targetId = views[normalized] || views[rawHash.split("?")[0].toLowerCase()] || "view-dashboard";
+    const activeKey = views[normalized] ? normalized : "dashboard";
 
     document.querySelectorAll(".view-section").forEach((el) => {
       el.classList.toggle("active", el.id === targetId);
     });
 
     document.querySelectorAll(".sidebar-nav a[data-nav]").forEach((link) => {
-      link.classList.toggle("active", link.dataset.nav === activeKey);
+      const navKey = (link.dataset.nav || "").replace(/_/g, "-");
+      link.classList.toggle("active", navKey === activeKey);
     });
 
     if (activeKey === "dashboard") initDashboard();
-    else if (activeKey === "add-slot") initAddSlot();
-    else if (activeKey === "manage-slots") initManageSlots();
+    else if (activeKey === "add-slot" || activeKey === "add_slot") {
+      initAddSlot();
+      setTimeout(() => {
+        if (slotPickerMapInstance) slotPickerMapInstance.invalidateSize();
+      }, 250);
+    }
+    else if (activeKey === "manage-slots" || activeKey === "manage_slots") initManageSlots();
     else if (activeKey === "bookings") initBookings();
     else if (activeKey === "revenue") initRevenue();
     else if (activeKey === "profile") initProfile();

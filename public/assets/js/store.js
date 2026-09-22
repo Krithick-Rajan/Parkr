@@ -838,38 +838,67 @@
   }
 
   async function addSlot(slot) {
-    const user = currentUserFromStorage();
-    if (!user || user.role !== "owner") throw new Error("Login as an owner before adding a parking slot.");
+    let user = currentUserFromStorage();
+    if (!user && global.Parkr && global.Parkr.getUser) user = global.Parkr.getUser();
+    if (!user) {
+      try { user = JSON.parse(localStorage.getItem("parkrUser") || "null"); } catch (e) {}
+    }
+    if (!user) throw new Error("Please login as an owner before adding a parking slot.");
+    const role = normalizeText(user.role);
+    if (role !== "owner" && role !== "admin") {
+      throw new Error("Your account (" + role + ") is not authorized to create parking slots. Please login as an owner.");
+    }
+
     invalidateCache("slots");
     const backend = await getBackend();
     const existingSlots = listLocalSlots();
     const slotId = readableIdFrom(slot, "SL") || nextReadableId("SL", existingSlots);
+    const ownerId = user.userId || user.id || "USR-OWNER";
+    const ownerEmail = user.email || "";
+    const ownerName = user.name || "Owner";
+
+    const lat = (slot.lat !== undefined && slot.lat !== null && !isNaN(Number(slot.lat)))
+      ? Number(slot.lat)
+      : 12.9716;
+    const lng = (slot.lng !== undefined && slot.lng !== null && !isNaN(Number(slot.lng)))
+      ? Number(slot.lng)
+      : 77.5946;
+
     const record = makeSlot({
       ...slot,
       id: slotId,
       slotId,
       displayId: slotId,
-      ownerId: user.userId || user.id,
-      ownerEmail: user.email,
-      owner: user.name,
+      lat,
+      lng,
+      ownerId,
+      ownerEmail,
+      owner: ownerName,
+      imageUrl: slot.imageUrl || "",
       status: "pending",
       verificationStatus: "pending",
       availabilityStatus: "unavailable"
     });
+
     let saved = record;
     if (backend && backend.addSlot) {
       try {
-        saved = await backend.addSlot(record) || saved;
+        saved = await Promise.race([backend.addSlot(record), wait(2500)]) || saved;
       } catch (err) {
         console.warn("[Store] Cloud addSlot write failed, saving locally:", err.message);
       }
     }
     try {
-      saved = await apiJson("/api/slots", {
+      const apiResp = await apiJson("/api/slots", {
         method: "POST",
         body: JSON.stringify(saved)
-      }) || saved;
-    } catch (err) {}
+      });
+      if (apiResp && (apiResp.id || apiResp.slotId)) {
+        saved = makeSlot(apiResp);
+      }
+    } catch (err) {
+      console.warn("[Store] API POST /api/slots error:", err.message);
+    }
     return upsertLocal(STORAGE.slots, seedSlots(), makeSlot(saved));
   }
 

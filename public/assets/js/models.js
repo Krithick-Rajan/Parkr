@@ -172,11 +172,15 @@
       this.availabilityStatus = source.availabilityStatus || (["approved", "available"].includes(this.status) ? "available" : "unavailable");
       this.verificationStatus = source.verificationStatus || (["approved", "pending", "rejected"].includes(this.status) ? this.status : "approved");
       this.ownerId = source.ownerId || "";
+      this.ownerEmail = source.ownerEmail || "";
       this.owner = source.owner || "";
       this.total = Number(source.total ?? source.totalSlots ?? source.availableSlots ?? source.available ?? 1);
       this.available = Number(source.available ?? source.availableSlots ?? this.total);
       this.rating = Number(source.rating || 4.5);
       this.imageClass = source.imageClass || "";
+      this.imageUrl = source.imageUrl || source.photo || "";
+      this.lat = source.lat !== undefined && source.lat !== null && !isNaN(Number(source.lat)) ? Number(source.lat) : undefined;
+      this.lng = source.lng !== undefined && source.lng !== null && !isNaN(Number(source.lng)) ? Number(source.lng) : undefined;
       this.features = Array.isArray(source.features) ? source.features : [];
       this.open = source.open || "";
       this.close = source.close || "";
@@ -191,6 +195,8 @@
         location: this.location,
         area: this.location,
         address: this.address,
+        lat: this.lat,
+        lng: this.lng,
         price: this.price,
         pricePerHour: this.price,
         vehicle: this.vehicleType,
@@ -199,7 +205,9 @@
         availabilityStatus: this.availabilityStatus,
         verificationStatus: this.verificationStatus,
         ownerId: this.ownerId,
+        ownerEmail: this.ownerEmail,
         owner: this.owner,
+        imageUrl: this.imageUrl,
         total: this.total,
         totalSlots: this.total,
         available: this.available,
