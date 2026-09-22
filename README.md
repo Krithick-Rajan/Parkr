@@ -2,15 +2,13 @@
 
 <div align="center">
 
-![Parkr Logo](public\assets\images\parkr-logo-orange.svg)
+<img src="public/assets/images/logo/parkr-logo-orange.svg" alt="Parkr Logo" width="180">
 
 ### Connect Drivers with Verified Parking Spaces
 
 A full-stack parking marketplace that connects drivers with parking-space owners through searchable listings, interactive maps, slot reservations, payment workflows, and administrator verification.
 
 </div>
-
----
 
 ## Table of Contents
 
@@ -36,8 +34,6 @@ A full-stack parking marketplace that connects drivers with parking-space owners
 - [License](#license)
 - [Author](#author)
 
----
-
 ## Overview
 
 **Parkr** is a web-based **parking slot sharing marketplace** designed to make parking-space discovery and reservation easier.
@@ -50,8 +46,6 @@ The platform provides three primary workspaces:
 
 Parkr uses a hybrid application architecture. The application can use **Firebase Authentication, Cloud Firestore, and Firebase Cloud Storage** for cloud-backed functionality while also supporting a persistent **Node.js/Express JSON data store** for local or offline development.
 
----
-
 ## Problem Statement
 
 Finding suitable parking in busy areas can be time-consuming, while privately owned parking spaces may remain unused for significant periods.
@@ -63,8 +57,6 @@ Parkr addresses this problem by providing a common platform where:
 3. Parking listings can be reviewed before becoming available to users.
 4. Drivers can reserve spaces for a specified date and duration.
 5. Booking and payment information can be maintained digitally.
-
----
 
 ## Objectives
 
@@ -79,8 +71,6 @@ The main objectives of Parkr are to:
 - Maintain booking and payment records.
 - Provide cloud-backed storage through Firebase.
 - Provide a persistent local fallback for development and offline operation.
-
----
 
 ## Key Features
 
@@ -131,19 +121,15 @@ The main objectives of Parkr are to:
 - Persistent JSON fallback database.
 - Email notification service using Nodemailer.
 
----
-
 ## User Roles
 
 | Role | Main Responsibilities |
 |---|---|
 | **Driver** | Search parking, view locations, reserve spaces, make payments, and manage bookings |
-| **Parking Owner** | Add parking spaces, upload images, configure pricing/availability, and manage reservations |
+| **Parking Owner** | Add parking spaces, upload images, configure pricing and availability, and manage reservations |
 | **Administrator** | Verify listings, manage users, monitor bookings, and review platform information |
 
 Access to workspace functionality should be controlled according to the authenticated user's role.
-
----
 
 ## System Architecture
 
@@ -175,36 +161,39 @@ Access to workspace functionality should be controlled according to the authenti
           |----------------------|          |----------------------|
           | Firebase Auth        |          | db.json / db.js      |
           | Cloud Firestore      |          | Persistent fallback  |
-          | Firebase Storage     |          | Offline development |
+          | Firebase Storage     |          | Offline development  |
           +----------------------+          +----------------------+
 ```
 
 ### Architecture Components
 
-**Frontend**
+#### Frontend
+
 - HTML5
 - CSS3
 - JavaScript ES6+
 - Leaflet.js
 - OpenStreetMap
 
-**Application Server**
+#### Application Server
+
 - Node.js
 - Express.js
 - REST API
 
-**Cloud Services**
+#### Cloud Services
+
 - Firebase Authentication
 - Cloud Firestore
 - Firebase Cloud Storage
 
-**Local Persistence**
+#### Local Persistence
+
 - File-backed JSON database
 
-**Notifications**
-- Nodemailer
+#### Notifications
 
----
+- Nodemailer
 
 ## Technology Stack
 
@@ -224,8 +213,6 @@ Access to workspace functionality should be controlled according to the authenti
 | Email | Nodemailer | Booking/notification emails |
 | Deployment | Vercel / Firebase Hosting | Application deployment |
 | Version Control | Git / GitHub | Source-code management |
-
----
 
 ## Project Structure
 
@@ -287,8 +274,6 @@ Parkr/
 └── vercel.json
 ```
 
----
-
 ## Prerequisites
 
 Install the following before running the project:
@@ -304,8 +289,6 @@ node --version
 npm --version
 git --version
 ```
-
----
 
 ## Getting Started
 
@@ -324,7 +307,7 @@ npm install
 
 ### 3. Configure Environment Variables
 
-Create a local `.env` file from the supplied example:
+Create a local `.env` file from the supplied example.
 
 #### Windows PowerShell
 
@@ -356,8 +339,6 @@ http://127.0.0.1:5500
 
 If your `package.json` uses a different port, use the port printed by the server.
 
----
-
 ## Environment Configuration
 
 The repository contains `.env.example` as the configuration template.
@@ -381,14 +362,12 @@ SMTP_PASS=
 
 Use the exact variable names already defined in your project's `.env.example`.
 
-For security:
+### Security Guidelines
 
 - Never commit `.env`.
 - Never publish Firebase private credentials.
 - Never place SMTP passwords or service credentials in frontend JavaScript.
 - Use Firebase Security Rules to protect Firestore and Storage resources.
-
----
 
 ## Application Workflow
 
@@ -474,8 +453,6 @@ Admin Dashboard
         +--> Review Reports / Analytics
 ```
 
----
-
 ## API Reference
 
 The backend exposes REST endpoints under:
@@ -484,7 +461,7 @@ The backend exposes REST endpoints under:
 /api
 ```
 
-### Parking Slots
+### Parking Slots API
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -500,7 +477,7 @@ Example filtering:
 GET /api/slots?vehicle=Car&status=approved
 ```
 
-### Bookings
+### Bookings API
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -515,14 +492,14 @@ GET /api/bookings?driverId=<id>
 GET /api/bookings?ownerId=<id>
 ```
 
-### Payments
+### Payments API
 
 | Method | Endpoint | Description |
 |---|---|---|
 | POST | `/api/payments/create-order` | Initialize a payment transaction |
 | POST | `/api/payments/verify` | Verify a payment result |
 
-### Reports
+### Reports API
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -531,11 +508,9 @@ GET /api/bookings?ownerId=<id>
 
 > API availability depends on the backend configuration and current implementation.
 
----
-
 ## Data Model
 
-The application works with the following core entities:
+Parkr works with the following core entities.
 
 ### User
 
@@ -587,8 +562,6 @@ Represents payment information associated with a booking.
 
 Represents user feedback associated with a completed parking interaction where supported.
 
----
-
 ## Security
 
 Parkr incorporates several security considerations:
@@ -600,12 +573,13 @@ Parkr incorporates several security considerations:
 - Environment variables for sensitive configuration.
 - Server-side API validation.
 - Separation of frontend and backend responsibilities.
-- No credentials should be committed to source control.
+- Credentials should never be committed to source control.
 
 ### Production Security Checklist
 
 Before production deployment:
 
+- [ ] Configure Firebase Authentication.
 - [ ] Configure Firebase Security Rules.
 - [ ] Review Firestore access permissions.
 - [ ] Review Firebase Storage rules.
@@ -615,15 +589,13 @@ Before production deployment:
 - [ ] Use HTTPS in production.
 - [ ] Review email-service credentials and permissions.
 
----
-
 ## Deployment
 
-Parkr can be deployed using the deployment configuration included in the repository.
+Parkr includes deployment configuration for **Vercel** and **Firebase Hosting**.
 
-### Vercel
+### Deploying to Vercel
 
-The project contains `vercel.json`.
+The repository contains `vercel.json`.
 
 After installing/configuring the Vercel CLI:
 
@@ -633,7 +605,7 @@ npx vercel
 
 Follow the CLI prompts and configure the required environment variables in the Vercel project.
 
-### Firebase Hosting
+### Deploying to Firebase Hosting
 
 Authenticate with Firebase:
 
@@ -641,25 +613,23 @@ Authenticate with Firebase:
 firebase login
 ```
 
-Initialize hosting if required:
+Initialize Firebase Hosting if required:
 
 ```bash
 firebase init hosting
 ```
 
-Deploy:
+Deploy the application:
 
 ```bash
 firebase deploy
 ```
 
-For production, configure Firebase Authentication, Firestore, Storage, and their security rules before exposing the application publicly.
-
----
+For production deployment, configure Firebase Authentication, Firestore, Storage, and their security rules before exposing the application publicly.
 
 ## Testing and Verification
 
-Before considering a deployment ready, verify the main workflows.
+Before deployment, verify the main application workflows.
 
 ### Authentication
 
@@ -672,10 +642,11 @@ Before considering a deployment ready, verify the main workflows.
 ### Parking Management
 
 - [ ] Owner can create a parking listing.
-- [ ] Image upload works.
+- [ ] Parking image upload works.
 - [ ] Listing reaches the administrator verification workflow.
-- [ ] Administrator can approve/reject a listing.
-- [ ] Approved listing becomes available according to the implementation.
+- [ ] Administrator can approve a listing.
+- [ ] Administrator can reject a listing.
+- [ ] Approved listings become available according to the application workflow.
 
 ### Booking
 
@@ -689,16 +660,14 @@ Before considering a deployment ready, verify the main workflows.
 
 - [ ] Payment workflow can be initiated.
 - [ ] Payment result is validated.
-- [ ] Booking/payment status is synchronized.
+- [ ] Booking and payment status are synchronized.
 
 ### Administration
 
 - [ ] Administrator can inspect users.
 - [ ] Administrator can review parking listings.
 - [ ] Administrator can inspect booking information.
-- [ ] Reports/analytics load correctly.
-
----
+- [ ] Reports and analytics load correctly.
 
 ## Future Enhancements
 
@@ -716,22 +685,37 @@ Potential extensions for Parkr include:
 - Automated fraud and duplicate-listing detection.
 - Production-grade database migration from JSON fallback storage.
 
----
-
 ## Contributing
 
-Contributions can be made through the standard Git workflow:
+Contributions can be made through the standard Git workflow.
+
+### Create a Feature Branch
 
 ```bash
 git checkout -b feature/your-feature
+```
+
+### Stage Changes
+
+```bash
 git add .
+```
+
+### Commit Changes
+
+```bash
 git commit -m "feat: describe your change"
+```
+
+### Push the Branch
+
+```bash
 git push origin feature/your-feature
 ```
 
-Then open a Pull Request.
+Then open a Pull Request on GitHub.
 
-When contributing:
+### Contribution Guidelines
 
 - Keep changes focused.
 - Follow the existing project structure.
@@ -739,15 +723,11 @@ When contributing:
 - Test affected workflows before submitting changes.
 - Update documentation when functionality changes.
 
----
-
 ## License
 
 This project is licensed under the **MIT License**.
 
 See the `LICENSE` file for the complete license text.
-
----
 
 ## Author
 
@@ -756,8 +736,6 @@ See the `LICENSE` file for the complete license text.
 Computer Science and Engineering Student
 
 GitHub: [Krithick-Rajan](https://github.com/Krithick-Rajan)
-
----
 
 <div align="center">
 
