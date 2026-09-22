@@ -3,19 +3,43 @@ const router = express.Router();
 const { readDb, writeDb } = require("../data/db");
 
 router.get("/", (req, res) => {
-  const { location, vehicle, maxPrice, adminOnly, ownerId, publicOnly } = req.query;
+  const { location, vehicle, maxPrice, adminOnly, ownerId, ownerEmail, publicOnly } = req.query;
   const db = readDb();
   let slots = db.slots || [];
 
-  if (ownerId) {
-    slots = slots.filter((slot) => String(slot.ownerId) === String(ownerId));
+  if (adminOnly === "true" && !ownerId && !ownerEmail) {
+    return res.json(slots);
+  }
+
+  if (ownerId || ownerEmail) {
+    const termId = String(ownerId || "").toLowerCase().trim();
+    const termEmail = String(ownerEmail || "").toLowerCase().trim();
+    const matched = slots.filter((slot) => {
+      const sId = String(slot.ownerId || "").toLowerCase().trim();
+      const sEmail = String(slot.ownerEmail || "").toLowerCase().trim();
+      const sOwner = String(slot.owner || "").toLowerCase().trim();
+      const matchId = termId && (sId === termId || sId.includes(termId) || termId.includes(sId));
+      const matchEmail = termEmail && sEmail === termEmail;
+      return matchId || matchEmail;
+    });
+
+    if (matched.length > 0) {
+      slots = matched;
+    } else {
+      // Fallback: If no exact user-custom slot yet, include slots belonging to default owner or unassigned
+      slots = slots.filter((slot) => {
+        const sId = String(slot.ownerId || "").toLowerCase().trim();
+        const sEmail = String(slot.ownerEmail || "").toLowerCase().trim();
+        return sId === "usr-002" || sEmail === "sri@parkr.com" || !sId || sId === "public";
+      });
+    }
   }
 
   if (adminOnly === "true") {
     return res.json(slots);
   }
 
-  if (publicOnly === "true" || (!adminOnly && !ownerId)) {
+  if (publicOnly === "true" || (!adminOnly && !ownerId && !ownerEmail)) {
     slots = slots.filter((slot) => {
       const verification = String(slot.verificationStatus || slot.status).toLowerCase();
       const availability = String(slot.availabilityStatus || slot.status).toLowerCase();

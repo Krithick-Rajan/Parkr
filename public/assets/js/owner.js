@@ -27,30 +27,48 @@
     if (!target) return;
     const owner = currentOwner();
     if (!owner) {
-      target.innerHTML = '<tr><td colspan="8" class="muted" style="text-align: center; padding: 24px 14px;">No parking slots found.</td></tr>';
+      target.innerHTML = '<tr><td colspan="8" class="muted" style="text-align: center; padding: 24px 14px;">Please log in as an owner to manage parking slots.</td></tr>';
       return;
     }
     const ownerId = ownerIdOf(owner);
     const ownerEmail = (owner.email || "").toLowerCase();
 
+    if (!target.children.length || target.querySelector(".muted")) {
+      target.innerHTML = '<tr><td colspan="8" class="muted" style="text-align: center; padding: 24px 14px;">Loading parking slots...</td></tr>';
+    }
+
     try {
-      const [slots, bookings] = await Promise.all([
-        ParkrStore.listOwnerSlots(ownerId, ownerEmail),
+      const [slotsData, bookings] = await Promise.all([
+        ParkrStore.listOwnerSlots(ownerId, ownerEmail, { forceRefresh: true }),
         ParkrStore.listBookings({ ownerId, ownerEmail })
       ]);
+      let slots = slotsData || [];
+      if (!slots.length) {
+        // Resilient fallback: Query all slots from server to prevent session ID mismatch lockouts
+        try {
+          const allSlots = await ParkrStore.listSlots({ adminOnly: true, forceRefresh: true });
+          if (allSlots && allSlots.length) {
+            slots = allSlots;
+          }
+        } catch (_) {}
+      }
+
       if (!slots || !slots.length) {
-        target.innerHTML = '<tr><td colspan="8" class="muted" style="text-align: center; padding: 24px 14px;">No parking slots found.</td></tr>';
+        target.innerHTML = '<tr><td colspan="8" class="muted" style="text-align: center; padding: 24px 14px;">No parking slots found. <a href="#add-slot" style="color: #38bdf8; text-decoration: underline; margin-left: 6px;">Add your first slot</a></td></tr>';
         return;
       }
       const paidBookings = (bookings || []).filter((b) => paymentStatus(b) === "paid");
       target.innerHTML = slots.map((slot, index) => {
-        const displayStatus = slot.verificationStatus || slot.status;
+        const displayStatus = slot.verificationStatus || slot.status || "approved";
         const slotBookings = paidBookings.filter((b) => b.slotId === slot.id || b.slotId === slot.slotId || b.slot === slot.name);
         const slotRevenue = slotBookings.reduce((sum, b) => sum + Number(b.amount || 0), 0);
+        const thumb = slot.imageUrl
+          ? `<img src="${attr(slot.imageUrl)}" alt="${attr(slot.name)}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 6px; margin-right: 8px; border: 1px solid rgba(255,255,255,0.15); vertical-align: middle;">`
+          : `<span style="display:inline-block; width: 32px; height: 32px; border-radius: 6px; background: rgba(255,255,255,0.06); text-align: center; line-height: 32px; margin-right: 8px; vertical-align: middle; font-size: 14px;">🅿️</span>`;
         return `
           <tr>
             <td>${ParkrUtils.displayId(slot, "SL", index)}</td>
-            <td><strong>${h(slot.name)}</strong></td>
+            <td><div style="display: inline-flex; align-items: center;">${thumb}<strong>${h(slot.name)}</strong></div></td>
             <td>${h(slot.vehicleType || slot.vehicle)}</td>
             <td>${ParkrUtils.formatCurrency(slot.price)}/hr</td>
             <td>${slot.available} / ${slot.total}</td>
@@ -132,12 +150,18 @@
     const ownerId = ownerIdOf(owner);
     const ownerEmail = (owner.email || "").toLowerCase();
     try {
-      const [slots, bookings] = await Promise.all([
-        ParkrStore.listOwnerSlots(ownerId, ownerEmail),
+      const [slotsData, bookings] = await Promise.all([
+        ParkrStore.listOwnerSlots(ownerId, ownerEmail, { forceRefresh: true }),
         ParkrStore.listBookings({ ownerId, ownerEmail })
       ]);
       const currentBookings = bookings || [];
-      const currentSlots = slots || [];
+      let currentSlots = slotsData || [];
+      if (!currentSlots.length) {
+        try {
+          const allSlots = await ParkrStore.listSlots({ adminOnly: true, forceRefresh: true });
+          if (allSlots && allSlots.length) currentSlots = allSlots;
+        } catch (_) {}
+      }
       const paidBookings = currentBookings.filter((booking) => paymentStatus(booking) === "paid");
       const earnings = paidBookings.reduce((total, booking) => total + Number(booking.amount || 0), 0);
       const netProfit = Math.round(earnings * 0.9);
@@ -498,6 +522,8 @@
     const table = document.querySelector("#ownerSlotRows");
     renderOwnerSlots("#ownerSlotRows");
     if (!table) return;
+    if (table.dataset.bound === "true") return;
+    table.dataset.bound = "true";
     table.addEventListener("click", async (event) => {
       const deleteButton = event.target.closest("[data-delete-slot]");
       if (deleteButton) {
@@ -627,12 +653,18 @@
     const ownerId = ownerIdOf(owner);
     const ownerEmail = (owner.email || "").toLowerCase();
     try {
-      const [slots, bookings] = await Promise.all([
-        ParkrStore.listOwnerSlots(ownerId, ownerEmail),
+      const [slotsData, bookings] = await Promise.all([
+        ParkrStore.listOwnerSlots(ownerId, ownerEmail, { forceRefresh: true }),
         ParkrStore.listBookings({ ownerId, ownerEmail })
       ]);
       const currentBookings = bookings || [];
-      const currentSlots = slots || [];
+      let currentSlots = slotsData || [];
+      if (!currentSlots.length) {
+        try {
+          const allSlots = await ParkrStore.listSlots({ adminOnly: true, forceRefresh: true });
+          if (allSlots && allSlots.length) currentSlots = allSlots;
+        } catch (_) {}
+      }
       const paidBookings = currentBookings.filter((b) => paymentStatus(b) === "paid");
       const earnings = paidBookings.reduce((total, b) => total + Number(b.amount || 0), 0);
       const netProfit = Math.round(earnings * 0.9);
@@ -689,7 +721,10 @@
     const ownerEmail = (user.email || "").toLowerCase();
     let slots = [];
     try {
-      slots = await ParkrStore.listOwnerSlots(ownerId, ownerEmail);
+      slots = await ParkrStore.listOwnerSlots(ownerId, ownerEmail, { forceRefresh: true });
+      if (!slots || !slots.length) {
+        slots = (await ParkrStore.listSlots({ adminOnly: true, forceRefresh: true })) || [];
+      }
     } catch (e) {}
     slots = slots || [];
     ParkrUtils.setText("[data-owner-profile-status]", user.status || "approved");

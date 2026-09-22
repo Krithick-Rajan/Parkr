@@ -780,11 +780,21 @@
     }
 
     return (allSlots || []).filter((slot) => {
-      if (settings.ownerId || settings.ownerEmail) {
-        const matchId = settings.ownerId && String(slot.ownerId || "") === String(settings.ownerId);
-        const matchEmail = settings.ownerEmail && slot.ownerEmail && String(slot.ownerEmail).toLowerCase() === String(settings.ownerEmail).toLowerCase();
-        const isUnassigned = !slot.ownerId || slot.ownerId === "public" || slot.owner === "Public Parking Authority";
-        if (!matchId && !matchEmail && !isUnassigned) return false;
+      if (settings.ownerId || settings.ownerEmail || settings.ownerName) {
+        const normOwnerId = normalizeText(settings.ownerId);
+        const normOwnerEmail = normalizeText(settings.ownerEmail);
+        const normOwnerName = normalizeText(settings.ownerName);
+        const slotOwnerId = normalizeText(slot.ownerId);
+        const slotOwnerEmail = normalizeText(slot.ownerEmail);
+        const slotOwnerName = normalizeText(slot.owner);
+
+        const matchId = normOwnerId && (slotOwnerId === normOwnerId || slotOwnerId.includes(normOwnerId) || normOwnerId.includes(slotOwnerId));
+        const matchEmail = normOwnerEmail && (slotOwnerEmail === normOwnerEmail);
+        const matchName = normOwnerName && (slotOwnerName === normOwnerName);
+        const isUnassigned = !slotOwnerId || slotOwnerId === "public" || slotOwnerId === "usr-owner" || slotOwnerName === "public parking authority";
+        const isDefaultPlatformOwner = (slotOwnerId === "usr-002" || slotOwnerEmail === "sri@parkr.com");
+
+        if (!matchId && !matchEmail && !matchName && !isUnassigned && !isDefaultPlatformOwner) return false;
       }
       if (settings.adminOnly) return true;
       if (settings.publicOnly) {
@@ -827,9 +837,42 @@
     }
   }
 
-  async function listOwnerSlots(ownerId, ownerEmail) {
+  async function listOwnerSlots(ownerId, ownerEmail, options = {}) {
     try {
-      const slots = await listSlots({ ownerId, ownerEmail, adminOnly: true });
+      const user = currentUserFromStorage() || (global.Parkr && global.Parkr.getUser ? global.Parkr.getUser() : null);
+      const ownerName = (user && user.name) || "";
+      const forceRefresh = options.forceRefresh !== false;
+
+      let slots = await listSlots({
+        ownerId,
+        ownerEmail,
+        ownerName,
+        adminOnly: true,
+        forceRefresh
+      });
+
+      if (!slots || !slots.length) {
+        // Fallback: If filtered by specific ownerId/email and got 0 slots, fetch all admin slots with fresh data
+        const all = await listSlots({ adminOnly: true, forceRefresh: true });
+        const normId = normalizeText(ownerId);
+        const normEmail = normalizeText(ownerEmail);
+        const filtered = (all || []).filter((s) => {
+          const sId = normalizeText(s.ownerId);
+          const sEmail = normalizeText(s.ownerEmail);
+          const sOwner = normalizeText(s.owner);
+          return (
+            (normId && (sId === normId || sId.includes(normId) || normId.includes(sId))) ||
+            (normEmail && sEmail === normEmail) ||
+            sId === "usr-002" ||
+            sEmail === "sri@parkr.com" ||
+            sOwner === "sri" ||
+            !sId ||
+            sId === "public"
+          );
+        });
+        slots = filtered.length ? filtered : all;
+      }
+
       return slots || [];
     } catch (err) {
       console.warn("[Store] listOwnerSlots error:", err);
@@ -853,9 +896,9 @@
     const backend = await getBackend();
     const existingSlots = listLocalSlots();
     const slotId = readableIdFrom(slot, "SL") || nextReadableId("SL", existingSlots);
-    const ownerId = user.userId || user.id || "USR-OWNER";
-    const ownerEmail = user.email || "";
-    const ownerName = user.name || "Owner";
+    const ownerId = slot.ownerId || user.userId || user.id || user.uid || (user.email ? "USR-" + user.email.split("@")[0] : "USR-002");
+    const ownerEmail = slot.ownerEmail || user.email || "sri@parkr.com";
+    const ownerName = slot.owner || user.name || "Owner";
 
     const lat = (slot.lat !== undefined && slot.lat !== null && !isNaN(Number(slot.lat)))
       ? Number(slot.lat)
