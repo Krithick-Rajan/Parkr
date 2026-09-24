@@ -176,7 +176,8 @@
       this.owner = source.owner || "";
       this.total = Number(source.total ?? source.totalSlots ?? source.availableSlots ?? source.available ?? 1);
       this.available = Number(source.available ?? source.availableSlots ?? this.total);
-      this.rating = Number(source.rating || 4.5);
+      this.rating = (source.rating !== undefined && source.rating !== null && !isNaN(Number(source.rating))) ? Number(source.rating) : 5.0;
+      this.reviewsCount = Number(source.reviewsCount || 0);
       this.imageClass = source.imageClass || "";
       this.imageUrl = source.imageUrl || source.photo || "";
       this.lat = source.lat !== undefined && source.lat !== null && !isNaN(Number(source.lat)) ? Number(source.lat) : undefined;
@@ -213,6 +214,7 @@
         available: this.available,
         availableSlots: this.available,
         rating: this.rating,
+        reviewsCount: this.reviewsCount,
         imageClass: this.imageClass,
         features: this.features,
         open: this.open,

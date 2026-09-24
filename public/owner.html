@@ -268,7 +268,15 @@
             <h2>Slot details</h2>
             <div class="form-grid">
               <div class="field"><label for="slotName">Parking name</label><input id="slotName" name="slotName" required placeholder="Parking name"></div>
-              <div class="field"><label for="slotVehicle">Vehicle type</label><select id="slotVehicle" name="vehicle" required><option>Car</option><option>Bike</option><option>Van</option></select></div>
+              <div class="field">
+                <label for="slotVehicle">Vehicle type</label>
+                <select id="slotVehicle" name="vehicle" required>
+                  <option value="Any Vehicle">Any Vehicle</option>
+                  <option value="Car">Car</option>
+                  <option value="Bike">Bike</option>
+                  <option value="Van">Van</option>
+                </select>
+              </div>
               <div class="field"><label for="slotPrice">Price per hour</label><input id="slotPrice" name="price" type="number" min="1" required placeholder="40"></div>
               <div class="field"><label for="slotCount">Total slots</label><input id="slotCount" name="total" type="number" min="1" required placeholder="20"></div>
               <div class="field"><label for="slotOpen">Opening time</label><input id="slotOpen" name="open" type="time" required></div>
@@ -288,7 +296,7 @@
                   </button>
                 </div>
               </div>
-              <textarea id="slotAddress" name="address" required placeholder="e.g. Sridevi Nagar, Coimbatore or MG Road, Bengaluru"></textarea>
+              <textarea id="slotAddress" name="address" required rows="2" placeholder="e.g. CIT College, Coimbatore or MG Road, Bengaluru" style="min-height: 55px; max-height: 100px; height: 65px; resize: vertical;"></textarea>
             </div>
 
             <!-- Dynamic Interactive Map Location Picker -->
@@ -296,14 +304,14 @@
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                 <span style="font-size: 0.85rem; font-weight: 600; color: #f8fafc; display: flex; align-items: center; gap: 6px;">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                  Dynamic Map Location (Click or Drag Pin)
+                  Map location
                 </span>
                 <span id="mapGeocodeStatus" style="font-size: 0.78rem; color: #38bdf8;">Interactive map active</span>
               </div>
               <div id="slotPickerMap" style="height: 250px; width: 100%; border-radius: 12px; border: 1.5px solid rgba(255,255,255,0.12); overflow: hidden; background: #0b1120; position: relative; z-index: 1;"></div>
               <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 0.78rem; color: #94a3b8;">
-                <span id="coordinatesDisplay">📍 Coordinates: 11.0168, 76.9558</span>
-                <span style="color: #4ade80;">✓ Dynamically saved with slot</span>
+                <span id="coordinatesDisplay" style="display: inline-flex; align-items: center; gap: 4px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Coordinates: 11.0168, 76.9558</span>
+                <span style="color: #4ade80; display: inline-flex; align-items: center; gap: 4px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Saved with slot</span>
               </div>
               <input type="hidden" id="slotLat" name="lat" value="11.0168">
               <input type="hidden" id="slotLng" name="lng" value="76.9558">

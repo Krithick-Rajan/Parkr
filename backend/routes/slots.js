@@ -58,12 +58,17 @@ router.get("/", (req, res) => {
 
   if (vehicle) {
     const vType = vehicle.toLowerCase().trim();
-    slots = slots.filter((slot) => String(slot.vehicleType || slot.vehicle).toLowerCase() === vType);
+    if (vType !== "any" && vType !== "any vehicle" && vType !== "all") {
+      slots = slots.filter((slot) => {
+        const sType = String(slot.vehicleType || slot.vehicle || "").toLowerCase();
+        return sType === "any vehicle" || sType === "any" || sType === "all" || sType.includes("any") || sType.includes("both") || sType === vType;
+      });
+    }
   }
 
   if (maxPrice) {
     const limit = Number(maxPrice);
-    if (!isNaN(limit)) {
+    if (!isNaN(limit) && limit < 9999) {
       slots = slots.filter((slot) => Number(slot.price || 0) <= limit);
     }
   }
@@ -73,7 +78,13 @@ router.get("/", (req, res) => {
 
 router.get("/:id", (req, res) => {
   const db = readDb();
-  const slot = (db.slots || []).find((s) => s.id === req.params.id || s.slotId === req.params.id);
+  const paramId = String(req.params.id || "").toLowerCase();
+  const slot = (db.slots || []).find((s) => {
+    const sId = String(s.id || "").toLowerCase();
+    const sSlotId = String(s.slotId || "").toLowerCase();
+    const sDisplayId = String(s.displayId || "").toLowerCase();
+    return sId === paramId || sSlotId === paramId || sDisplayId === paramId;
+  });
   if (!slot) return res.status(404).json({ error: "Parking slot not found" });
   res.json(slot);
 });
@@ -177,6 +188,49 @@ router.delete("/:id", (req, res) => {
 
   writeDb(db);
   res.json({ success: true, message: "Slot deleted" });
+});
+
+router.get("/:id/reviews", (req, res) => {
+  const db = readDb();
+  const slotId = req.params.id;
+  const reviews = (db.reviews || []).filter((r) => r.slotId === slotId);
+  res.json(reviews);
+});
+
+router.post("/:id/reviews", (req, res) => {
+  const db = readDb();
+  const slotId = req.params.id;
+  const slotIndex = (db.slots || []).findIndex((s) => s.id === slotId || s.slotId === slotId);
+  if (slotIndex < 0) return res.status(404).json({ error: "Parking slot not found" });
+
+  const reviews = db.reviews || [];
+  const count = reviews.length + 1;
+  const reviewId = "REV-" + String(count).padStart(3, "0");
+  const ratingNum = Math.max(1, Math.min(5, Number(req.body.rating) || 5));
+
+  const newReview = {
+    id: reviewId,
+    reviewId,
+    slotId,
+    slotName: db.slots[slotIndex].name || "Parking Slot",
+    driverId: req.body.driverId || "",
+    driverName: req.body.driverName || req.body.driver || "Driver",
+    rating: ratingNum,
+    comment: req.body.comment || "Great parking spot!",
+    createdAt: new Date().toISOString()
+  };
+
+  reviews.unshift(newReview);
+  db.reviews = reviews;
+
+  // Dynamically calculate average rating from real reviews
+  const slotReviews = reviews.filter((r) => r.slotId === slotId);
+  const avg = slotReviews.reduce((sum, r) => sum + Number(r.rating || 0), 0) / slotReviews.length;
+  db.slots[slotIndex].rating = Number(avg.toFixed(1));
+  db.slots[slotIndex].reviewsCount = slotReviews.length;
+
+  writeDb(db);
+  res.status(201).json({ review: newReview, slot: db.slots[slotIndex] });
 });
 
 module.exports = router;

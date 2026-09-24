@@ -382,7 +382,13 @@
 
   function closeCustomMenus(except) {
     document.querySelectorAll(".search-suggestions.show").forEach((menu) => {
-      if (menu !== except) menu.classList.remove("show");
+      if (menu !== except) {
+        menu.classList.remove("show");
+        const parent = menu.closest(".custom-dropdown-control, .custom-date-control, .custom-time-control");
+        if (parent) parent.classList.remove("is-open");
+        const bar = menu.closest(".filter-bar, .search-bar");
+        if (bar) bar.classList.remove("is-open");
+      }
     });
   }
 
@@ -658,7 +664,9 @@
   }
 
   function initCustomDateControls() {
+    const todayIso = toIsoDate(new Date());
     document.querySelectorAll('input[type="date"]').forEach((input) => {
+      if (!input.min) input.min = todayIso;
       if (input.classList.contains("native-enhanced-control")) return;
 
       const wrapper = document.createElement("div");
@@ -692,16 +700,25 @@
         const previousDays = new Date(year, month, 0).getDate();
         const monthName = viewDate.toLocaleString("en", { month: "long", year: "numeric" });
         const dayButtons = [];
+        const todayIso = toIsoDate(new Date());
+        const minIso = input.min || todayIso;
+        const maxIso = input.max || "";
 
         for (let i = firstDay - 1; i >= 0; i -= 1) {
-          dayButtons.push(`<span class="custom-date-day is-muted">${previousDays - i}</span>`);
+          dayButtons.push(`<span class="custom-date-day is-muted is-disabled" style="cursor: not-allowed; opacity: 0.3;">${previousDays - i}</span>`);
         }
 
         for (let day = 1; day <= daysInMonth; day += 1) {
           const date = new Date(year, month, day);
           const iso = toIsoDate(date);
           const isSelected = selected && iso === toIsoDate(selected) ? " is-selected" : "";
-          dayButtons.push(`<button class="custom-date-day${isSelected}" type="button" data-date="${iso}">${day}</button>`);
+          const isToday = iso === todayIso ? " is-today" : "";
+          const isDisabled = (minIso && iso < minIso) || (maxIso && iso > maxIso);
+          if (isDisabled) {
+            dayButtons.push(`<span class="custom-date-day is-muted is-disabled" style="cursor: not-allowed; opacity: 0.3;" title="Past dates cannot be selected">${day}</span>`);
+          } else {
+            dayButtons.push(`<button class="custom-date-day${isSelected}${isToday}" type="button" data-date="${iso}"${iso === todayIso ? ' title="Today"' : ''}>${day}</button>`);
+          }
         }
 
         const totalCells = Math.ceil(dayButtons.length / 7) * 7;
@@ -728,12 +745,36 @@
         `;
       }
 
+      function closeMenu() {
+        menu.classList.remove("show");
+        wrapper.classList.remove("is-open");
+        const parentBar = wrapper.closest(".filter-bar, .search-bar");
+        if (parentBar) parentBar.classList.remove("is-open");
+      }
+
       function toggleCalendar() {
         const willOpen = !menu.classList.contains("show");
         closeCustomMenus(menu);
         if (willOpen) {
           renderCalendar();
           menu.classList.add("show");
+          wrapper.classList.add("is-open");
+          const parentBar = wrapper.closest(".filter-bar, .search-bar");
+          if (parentBar) parentBar.classList.add("is-open");
+
+          // Keep calendar inside viewport horizontally if near right boundary
+          requestAnimationFrame(() => {
+            const rect = menu.getBoundingClientRect();
+            if (rect.right > window.innerWidth - 16) {
+              menu.style.left = "auto";
+              menu.style.right = "0";
+            } else {
+              menu.style.left = "0";
+              menu.style.right = "auto";
+            }
+          });
+        } else {
+          closeMenu();
         }
       }
 
@@ -743,7 +784,7 @@
           event.preventDefault();
           toggleCalendar();
         }
-        if (event.key === "Escape") menu.classList.remove("show");
+        if (event.key === "Escape") closeMenu();
       });
 
       menu.addEventListener("mousedown", (event) => event.preventDefault());
@@ -759,14 +800,14 @@
           input.value = dayButton.dataset.date;
           input.dispatchEvent(new Event("change", { bubbles: true }));
           syncTrigger();
-          menu.classList.remove("show");
+          closeMenu();
           return;
         }
         if (event.target.closest("[data-clear-date]")) {
           input.value = "";
           input.dispatchEvent(new Event("change", { bubbles: true }));
           syncTrigger();
-          menu.classList.remove("show");
+          closeMenu();
           return;
         }
         if (event.target.closest("[data-today-date]")) {
@@ -775,12 +816,12 @@
           viewDate = today;
           input.dispatchEvent(new Event("change", { bubbles: true }));
           syncTrigger();
-          menu.classList.remove("show");
+          closeMenu();
         }
       });
 
       document.addEventListener("click", (event) => {
-        if (!wrapper.contains(event.target)) menu.classList.remove("show");
+        if (!wrapper.contains(event.target)) closeMenu();
       });
 
       syncTrigger();

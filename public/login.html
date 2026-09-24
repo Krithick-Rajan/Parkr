@@ -37,14 +37,14 @@
       <h2 id="login-title">Login</h2>
       <p>Use the email, password, and role you selected during registration.</p>
 
-      <form class="auth-form" id="loginForm">
+      <form class="auth-form" id="loginForm" autocomplete="off">
         <div class="field">
           <label for="loginEmail">Email address</label>
-          <input id="loginEmail" name="email" type="email" autocomplete="email" required placeholder="name@example.com">
+          <input id="loginEmail" name="email" type="email" autocomplete="off" required placeholder="name@example.com">
         </div>
         <div class="field">
           <label for="loginPassword">Password</label>
-          <input id="loginPassword" name="password" type="password" autocomplete="current-password" required placeholder="Enter password">
+          <input id="loginPassword" name="password" type="text" class="masked-password-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required placeholder="Enter password">
         </div>
         <fieldset class="field">
           <legend class="form-label">Login as</legend>

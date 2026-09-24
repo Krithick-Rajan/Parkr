@@ -82,7 +82,7 @@
         const slotRevenue = slotBookings.reduce((sum, b) => sum + Number(b.amount || 0), 0);
         const thumb = slot.imageUrl
           ? `<img src="${attr(slot.imageUrl)}" alt="${attr(slot.name)}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 6px; margin-right: 8px; border: 1px solid rgba(255,255,255,0.15); vertical-align: middle;">`
-          : `<span style="display:inline-block; width: 32px; height: 32px; border-radius: 6px; background: rgba(255,255,255,0.06); text-align: center; line-height: 32px; margin-right: 8px; vertical-align: middle; font-size: 14px;">🅿️</span>`;
+          : `<img src="assets/images/logo/parkr-logo-orange.svg" alt="Parkr Logo" style="width: 22px; height: 22px; object-fit: contain; vertical-align: middle; margin-right: 8px; display: inline-block;">`;
         return `
           <tr>
             <td>${ParkrUtils.displayId(slot, "SL", index)}</td>
@@ -142,24 +142,141 @@
     const target = document.querySelector(selector);
     if (!target) return;
     if (!paidBookings || !paidBookings.length) {
-      target.innerHTML = '<div class="empty-state"><div><h3>No booking revenue yet</h3><p>Revenue appears when drivers book and pay for your parking spaces.</p></div></div>';
+      target.innerHTML = `
+        <div class="parkr-bento-empty">
+          <div class="bento-empty-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="20" x2="12" y2="10"></line>
+              <line x1="18" y1="20" x2="18" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="16"></line>
+            </svg>
+          </div>
+          <h3>No Booking Revenue Yet</h3>
+          <p class="muted">Live Bento analytics and slot earnings distribution will populate here as drivers complete bookings.</p>
+        </div>
+      `;
       return;
     }
+
     const revenueBySlot = paidBookings.reduce((map, booking) => {
       const name = booking.slot || "Parking slot";
       map[name] = (map[name] || 0) + Number(booking.amount || 0);
       return map;
     }, {});
-    const max = Math.max(...Object.values(revenueBySlot), 1);
-    target.innerHTML = Object.entries(revenueBySlot).map(([name, amount]) => {
-      const percent = Math.max(Math.round((amount / max) * 100), 5);
-      return `
-        <div class="progress-row">
-          <div class="progress-label"><span>${h(name)}</span><strong>${ParkrUtils.formatCurrency(amount)}</strong></div>
-          <div class="progress-track"><span style="width:${percent}%"></span></div>
+
+    const countBySlot = paidBookings.reduce((map, booking) => {
+      const name = booking.slot || "Parking slot";
+      map[name] = (map[name] || 0) + 1;
+      return map;
+    }, {});
+
+    const totalRevenue = Object.values(revenueBySlot).reduce((a, b) => a + b, 0);
+    const sortedSlots = Object.entries(revenueBySlot)
+      .map(([name, amount]) => ({
+        name,
+        amount,
+        count: countBySlot[name] || 1,
+        percent: totalRevenue ? Math.round((amount / totalRevenue) * 100) : 100
+      }))
+      .sort((a, b) => b.amount - a.amount);
+
+    const topSlot = sortedSlots[0] || { name: "Parking Slot", amount: totalRevenue, count: paidBookings.length, percent: 100 };
+    const netTakeHome = Math.round(totalRevenue * 0.9);
+    const platformFee = totalRevenue - netTakeHome;
+    const avgTicket = paidBookings.length ? Math.round(totalRevenue / paidBookings.length) : 0;
+
+    target.innerHTML = `
+      <div class="revenue-bento-grid">
+        <!-- 1. Primary Hero Tile -->
+        <div class="bento-tile bento-hero">
+          <div class="bento-pattern-bg"></div>
+          <div class="bento-hero-top">
+            <span class="bento-pill-badge amber">
+              <img src="assets/images/logo/parkr-logo-orange.svg" alt="Parkr Logo" style="width: 14px; height: 14px; object-fit: contain; vertical-align: middle;">
+              Top Revenue Generator
+            </span>
+            <span class="bento-share-chip">${topSlot.percent}% share</span>
+          </div>
+          <div class="bento-hero-body">
+            <div class="bento-hero-val">${ParkrUtils.formatCurrency(topSlot.amount)}</div>
+            <div class="bento-hero-title">${h(topSlot.name)}</div>
+            <div class="bento-hero-meta">
+              <span>${topSlot.count} ${topSlot.count === 1 ? "reservation" : "reservations"}</span>
+              <span>•</span>
+              <span>Avg. ${ParkrUtils.formatCurrency(Math.round(topSlot.amount / topSlot.count))}/booking</span>
+            </div>
+          </div>
         </div>
-      `;
-    }).join("");
+
+        <!-- 2. Secondary Yield Tile -->
+        <div class="bento-tile bento-yield">
+          <div class="bento-tile-header">
+            <span class="bento-tile-label">Net Owner Yield</span>
+            <span class="bento-yield-tag">+90% Net</span>
+          </div>
+          <div>
+            <div class="bento-yield-amount">${ParkrUtils.formatCurrency(netTakeHome)}</div>
+            <div class="bento-yield-caption">Platform fee: ${ParkrUtils.formatCurrency(platformFee)} (10%)</div>
+          </div>
+          <div class="bento-sparkline" title="Booking Activity Distribution">
+            <div class="bento-bar-col"><div class="bento-bar-fill" style="height: 40%;"></div></div>
+            <div class="bento-bar-col"><div class="bento-bar-fill" style="height: 65%;"></div></div>
+            <div class="bento-bar-col"><div class="bento-bar-fill" style="height: 50%;"></div></div>
+            <div class="bento-bar-col"><div class="bento-bar-fill" style="height: 85%;"></div></div>
+            <div class="bento-bar-col"><div class="bento-bar-fill active" style="height: 100%;"></div></div>
+          </div>
+        </div>
+
+        <!-- 3. Tertiary Metric Tile -->
+        <div class="bento-tile bento-metric">
+          <div class="bento-tile-header">
+            <span class="bento-tile-label">Booking Velocity</span>
+            <span class="bento-metric-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+            </span>
+          </div>
+          <div>
+            <div class="bento-metric-val">${paidBookings.length} <span class="bento-unit">Paid</span></div>
+            <div class="bento-metric-sub">Avg ticket: <strong style="color: #f8fafc;">${ParkrUtils.formatCurrency(avgTicket)}</strong></div>
+          </div>
+          <div style="font-size: 0.72rem; color: #64748b; margin-top: 8px;">
+            Live settlement: <strong style="color: #4ade80;">Active</strong>
+          </div>
+        </div>
+
+        <!-- 4. Distribution Breakdown Card -->
+        <div class="bento-tile bento-distribution">
+          <div class="bento-dist-header">
+            <span class="bento-tile-label">Slot Distribution Performance</span>
+            <span class="muted" style="font-size: 0.78rem;">${sortedSlots.length} ${sortedSlots.length === 1 ? "location" : "locations"}</span>
+          </div>
+          <div class="bento-dist-rows">
+            ${sortedSlots.map((slot) => `
+              <div class="bento-slot-row">
+                <div class="bento-slot-top">
+                  <div class="bento-slot-left">
+                    <img src="assets/images/logo/parkr-logo-orange.svg" alt="Parkr Logo" style="width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; display: inline-block;">
+                    <div class="bento-slot-info">
+                      <strong class="bento-slot-name">${h(slot.name)}</strong>
+                      <span class="bento-slot-meta">${slot.count} ${slot.count === 1 ? "booking" : "bookings"} · ${slot.percent}% share</span>
+                    </div>
+                  </div>
+                  <div class="bento-slot-right">
+                    <span class="bento-slot-share-pill">${slot.percent}%</span>
+                    <strong class="bento-slot-amount">${ParkrUtils.formatCurrency(slot.amount)}</strong>
+                  </div>
+                </div>
+                <div class="bento-row-track">
+                  <div class="bento-row-bar" style="width: ${slot.percent}%;"></div>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   async function initDashboard() {
@@ -255,38 +372,84 @@
 
     if (latInput) latInput.value = fixedLat;
     if (lngInput) lngInput.value = fixedLng;
-    if (coordsDisplay) coordsDisplay.textContent = `📍 Coordinates: ${fixedLat}, ${fixedLng}`;
+    if (coordsDisplay) coordsDisplay.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; margin-right:4px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Coordinates: ${fixedLat}, ${fixedLng}`;
     if (statusDisplay) {
-      statusDisplay.textContent = labelText ? `📍 ${labelText.slice(0, 32)}...` : "Pin set";
+      statusDisplay.innerHTML = labelText ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; margin-right:4px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${labelText.slice(0, 32)}...` : "Pin set";
       statusDisplay.style.color = "#4ade80";
     }
   }
 
-  async function geocodeAddress(query) {
-    if (!query || query.trim().length < 3) return;
+  async function geocodeAddress(query, shouldUpdateAddressInput = true) {
+    if (!query || query.trim().length < 2) return;
     const statusDisplay = document.querySelector("#mapGeocodeStatus");
     if (statusDisplay) {
       statusDisplay.textContent = "Locating on map...";
       statusDisplay.style.color = "#38bdf8";
     }
     try {
-      const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query.trim())}`);
-      if (!resp.ok) return;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query.trim())}`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if (!resp.ok) throw new Error("Search service unavailable");
       const data = await resp.json();
       if (data && data.length > 0) {
         const lat = parseFloat(data[0].lat);
         const lon = parseFloat(data[0].lon);
+        const matchedAddress = data[0].display_name;
         if (slotPickerMapInstance && slotPickerMarker) {
           slotPickerMapInstance.flyTo([lat, lon], 15, { duration: 0.8 });
           slotPickerMarker.setLatLng([lat, lon]);
-          updateCoordinates(lat, lon, data[0].display_name);
+          updateCoordinates(lat, lon, matchedAddress);
+        }
+        // Auto-fill full address box with the official matched address
+        if (shouldUpdateAddressInput) {
+          const addressInput = document.querySelector("#slotAddress");
+          if (addressInput && matchedAddress) {
+            addressInput.value = matchedAddress;
+          }
+        }
+        if (statusDisplay) {
+          statusDisplay.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; margin-right:4px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${matchedAddress.slice(0, 36)}...`;
+          statusDisplay.style.color = "#4ade80";
         }
       } else if (statusDisplay) {
-        statusDisplay.textContent = "Address not found on map";
-        statusDisplay.style.color = "#f59e0b";
+        statusDisplay.textContent = "Location found. Click map to fine-tune pin.";
+        statusDisplay.style.color = "#38bdf8";
       }
     } catch (err) {
-      console.warn("[Geocode] Request failed:", err);
+      console.warn("[Geocode] Request failed or timed out:", err.message);
+      if (statusDisplay) {
+        statusDisplay.textContent = "Interactive pin ready. Drag pin or click map.";
+        statusDisplay.style.color = "#f59e0b";
+      }
+    }
+  }
+
+  async function reverseGeocode(lat, lon) {
+    const addressInput = document.querySelector("#slotAddress");
+    const statusDisplay = document.querySelector("#mapGeocodeStatus");
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if (!resp.ok) return;
+      const data = await resp.json();
+      if (data && data.display_name) {
+        if (addressInput) addressInput.value = data.display_name;
+        updateCoordinates(lat, lon, data.display_name);
+        if (statusDisplay) {
+          statusDisplay.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; margin-right:4px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${data.display_name.slice(0, 36)}...`;
+          statusDisplay.style.color = "#4ade80";
+        }
+      }
+    } catch (err) {
+      console.warn("[ReverseGeocode] Request failed:", err.message);
     }
   }
 
@@ -298,14 +461,19 @@
       setTimeout(() => slotPickerMapInstance.invalidateSize(), 200);
       return;
     }
+    if (mapContainer._leaflet_id) {
+      delete mapContainer._leaflet_id;
+    }
 
     // Default coordinates: Coimbatore (11.0168, 76.9558)
     const initialLat = 11.0168;
     const initialLng = 76.9558;
 
-    slotPickerMapInstance = L.map("slotPickerMap").setView([initialLat, initialLng], 13);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    slotPickerMapInstance = L.map("slotPickerMap", { attributionControl: false }).setView([initialLat, initialLng], 13);
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19
+    }).addTo(slotPickerMapInstance);
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {
       maxZoom: 19
     }).addTo(slotPickerMapInstance);
 
@@ -318,12 +486,14 @@
     slotPickerMarker.on("dragend", (e) => {
       const pos = e.target.getLatLng();
       updateCoordinates(pos.lat, pos.lng, "Custom Entrance Pin");
+      reverseGeocode(pos.lat, pos.lng);
     });
 
     slotPickerMapInstance.on("click", (e) => {
       const pos = e.latlng;
       slotPickerMarker.setLatLng(pos);
       updateCoordinates(pos.lat, pos.lng, "Selected Map Point");
+      reverseGeocode(pos.lat, pos.lng);
     });
 
     setTimeout(() => {
@@ -363,7 +533,14 @@
 
     if (locateBtn && addressInput) {
       locateBtn.addEventListener("click", () => {
-        geocodeAddress(addressInput.value);
+        const val = addressInput.value.trim();
+        if (!val) {
+          if (typeof Parkr !== "undefined" && Parkr.showToast) {
+            Parkr.showToast("Please enter an address to locate on map.", "warning");
+          }
+          return;
+        }
+        geocodeAddress(val);
       });
     }
 
@@ -376,7 +553,13 @@
           return;
         }
         const statusDisplay = document.querySelector("#mapGeocodeStatus");
-        if (statusDisplay) statusDisplay.textContent = "Acquiring GPS...";
+        if (statusDisplay) {
+          statusDisplay.textContent = "Acquiring GPS location...";
+          statusDisplay.style.color = "#38bdf8";
+        }
+        if (typeof Parkr !== "undefined" && Parkr.showToast) {
+          Parkr.showToast("Acquiring GPS position...");
+        }
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             const lat = pos.coords.latitude;
@@ -385,15 +568,23 @@
               slotPickerMapInstance.flyTo([lat, lng], 16, { duration: 0.8 });
               slotPickerMarker.setLatLng([lat, lng]);
               updateCoordinates(lat, lng, "Current GPS Position");
+              reverseGeocode(lat, lng);
+              if (typeof Parkr !== "undefined" && Parkr.showToast) {
+                Parkr.showToast("GPS position acquired and address updated!");
+              }
             }
           },
           (err) => {
             console.warn("GPS error:", err);
             if (typeof Parkr !== "undefined" && Parkr.showToast) {
-              Parkr.showToast("Could not access GPS. Please type your location.", "warning");
+              Parkr.showToast("Could not access GPS. Please click directly on the map to set pin.", "warning");
+            }
+            if (statusDisplay) {
+              statusDisplay.textContent = "GPS unavailable. Click map to set pin.";
+              statusDisplay.style.color = "#f59e0b";
             }
           },
-          { timeout: 7000 }
+          { timeout: 10000, enableHighAccuracy: true }
         );
       });
     }

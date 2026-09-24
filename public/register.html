@@ -37,22 +37,22 @@
       <h2 id="register-title">Create account</h2>
       <p>Set up your profile and continue to the matching workspace.</p>
 
-      <form class="auth-form" id="registerForm">
+      <form class="auth-form" id="registerForm" autocomplete="off">
         <div class="field">
           <label for="registerName">Full name</label>
-          <input id="registerName" name="name" autocomplete="name" required placeholder="Your name">
+          <input id="registerName" name="name" autocomplete="off" required placeholder="Your name">
         </div>
         <div class="field">
           <label for="registerEmail">Email address</label>
-          <input id="registerEmail" name="email" type="email" autocomplete="email" required placeholder="name@example.com">
+          <input id="registerEmail" name="email" type="email" autocomplete="off" required placeholder="name@example.com">
         </div>
         <div class="field">
           <label for="registerPhone">Phone number</label>
-          <input id="registerPhone" name="phone" type="tel" autocomplete="tel" placeholder="+91 98765 43210">
+          <input id="registerPhone" name="phone" type="tel" autocomplete="off" placeholder="+91 98765 43210">
         </div>
         <div class="field">
           <label for="registerPassword">Password</label>
-          <input id="registerPassword" name="password" type="password" autocomplete="new-password" required minlength="6" placeholder="Minimum 6 characters">
+          <input id="registerPassword" name="password" type="text" class="masked-password-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required minlength="6" placeholder="Minimum 6 characters">
         </div>
         <fieldset class="field">
           <legend class="form-label">Register as</legend>

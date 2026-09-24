@@ -21,6 +21,13 @@ router.get("/", (req, res) => {
 router.post("/", async (req, res) => {
   const db = readDb();
   const bookings = db.bookings || [];
+
+  const bookingDateVal = req.body.date || req.body.bookingDate;
+  const todayIso = new Date().toISOString().split("T")[0];
+  if (bookingDateVal && bookingDateVal < todayIso) {
+    return res.status(400).json({ error: "Cannot book parking for past dates." });
+  }
+
   const count = bookings.length + 1;
   const bookingId = "BK-" + String(count).padStart(3, "0");
 
@@ -77,7 +84,7 @@ router.patch("/:id/status", (req, res) => {
   const prevStatus = db.bookings[index].status;
   db.bookings[index].status = normalized;
 
-  // If cancelling, restore slot capacity
+  // If cancelling, restore slot capacity and mark payments refunded
   if (normalized === "cancelled" && prevStatus !== "cancelled") {
     const slotId = db.bookings[index].slotId;
     const slotIndex = (db.slots || []).findIndex((s) => s.id === slotId || s.slotId === slotId);
@@ -88,10 +95,40 @@ router.patch("/:id/status", (req, res) => {
       db.slots[slotIndex].availableSlots = nextAvailable;
       db.slots[slotIndex].availabilityStatus = "available";
     }
+    const targetBookingId = db.bookings[index].id || db.bookings[index].bookingId;
+    (db.payments || []).forEach((p) => {
+      if (p.bookingId === targetBookingId) {
+        p.status = "refunded";
+        p.paymentStatus = "refunded";
+      }
+    });
   }
 
   writeDb(db);
   res.json(db.bookings[index]);
+});
+
+router.delete("/clear/cancelled", (req, res) => {
+  const db = readDb();
+  const cancelledIds = new Set((db.bookings || []).filter((b) => b.status === "cancelled").map((b) => b.id || b.bookingId));
+  db.bookings = (db.bookings || []).filter((b) => b.status !== "cancelled");
+  db.payments = (db.payments || []).filter((p) => !cancelledIds.has(p.bookingId) && p.status !== "refunded");
+  writeDb(db);
+  res.json({ success: true, message: "Cancelled bookings cleared" });
+});
+
+router.delete("/:id", (req, res) => {
+  const db = readDb();
+  const bookings = db.bookings || [];
+  const index = bookings.findIndex((b) => b.id === req.params.id || b.bookingId === req.params.id);
+  if (index < 0) return res.status(404).json({ error: "Booking not found" });
+
+  const targetBookingId = bookings[index].id || bookings[index].bookingId;
+  const removed = bookings.splice(index, 1);
+  db.bookings = bookings;
+  db.payments = (db.payments || []).filter((p) => p.bookingId !== targetBookingId);
+  writeDb(db);
+  res.json({ success: true, removed: removed[0] });
 });
 
 module.exports = router;

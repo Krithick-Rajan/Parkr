@@ -108,8 +108,8 @@
 
         <div class="map-wrapper">
           <div class="map-header">
-            <h3><span class="map-dot"></span> Live Parking Map (OpenStreetMap)</h3>
-            <span class="map-badge">100% Free · Real-time Pins</span>
+            <h3><span class="map-dot"></span> Live Parking Map</h3>
+            <span class="map-badge">Real-time Pins</span>
           </div>
           <div id="searchMap" class="map-canvas"></div>
         </div>
@@ -136,17 +136,89 @@
               <p class="muted">Verified owner details and facilities for a smoother arrival.</p>
               <div class="slot-meta" id="slotFeatures"></div>
             </div>
+
+            <div class="data-panel" id="slotReviewsPanel">
+              <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div>
+                  <h2 style="margin: 0 0 4px 0;">Reviews & Ratings</h2>
+                  <p class="muted" style="margin: 0;">Verified feedback and ratings from drivers.</p>
+                </div>
+                <button type="button" class="btn btn-secondary btn-small" id="toggleReviewBtn">Write a Review</button>
+              </div>
+
+              <!-- Write a review form -->
+              <form id="writeReviewForm" class="stack" style="display: none; margin-bottom: 20px; padding: 18px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; gap: 14px;">
+                <!-- 1. First: Name of the review -->
+                <div class="field">
+                  <label for="reviewDriverName">Your Name</label>
+                  <input id="reviewDriverName" name="driverName" type="text" placeholder="Enter your name" required>
+                </div>
+
+                <!-- 2. Then: Rating stars with small details below -->
+                <div class="field">
+                  <label>Rating</label>
+                  <input type="hidden" id="reviewRating" name="rating" value="5">
+                  <div class="interactive-stars" id="interactiveStars" style="display: inline-flex; gap: 8px; cursor: pointer; align-items: center; padding: 2px 0;">
+                    <span class="star-item is-active" data-value="1" title="1 Star - Terrible"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+                    <span class="star-item is-active" data-value="2" title="2 Stars - Poor"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+                    <span class="star-item is-active" data-value="3" title="3 Stars - Average"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+                    <span class="star-item is-active" data-value="4" title="4 Stars - Good"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+                    <span class="star-item is-active" data-value="5" title="5 Stars - Excellent"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+                  </div>
+                  <div id="starRatingLabel" style="font-size: 0.8rem; color: #fbbf24; font-weight: 600; margin-top: 3px;">5 Stars · Excellent</div>
+                </div>
+
+                <!-- 3. Then: Feedback or review -->
+                <div class="field">
+                  <label for="reviewComment">Review / Feedback</label>
+                  <textarea id="reviewComment" name="comment" rows="3" placeholder="Describe your experience with this slot..." required style="min-height: 85px; height: 95px; resize: vertical; display: block; width: 100%; margin: 0;"></textarea>
+                </div>
+                <div class="inline-actions" style="margin-top: 6px; display: flex; gap: 10px; align-items: center; clear: both;">
+                  <button type="submit" class="btn btn-primary btn-small" id="submitReviewBtn">Submit Review</button>
+                  <button type="button" class="btn btn-secondary btn-small" id="cancelReviewBtn">Cancel</button>
+                </div>
+              </form>
+
+              <!-- Reviews list container -->
+              <div id="slotReviewsList" class="stack" style="gap: 12px;">
+                <p class="muted">Loading reviews...</p>
+              </div>
+            </div>
           </article>
 
           <aside class="data-panel">
             <h2>Booking summary</h2>
-            <div class="summary-strip">
-              <div class="summary-item"><span>Rate</span><strong data-slot-price>Rs. 0 / hour</strong></div>
-              <div class="summary-item"><span>Rating</span><strong data-slot-rating>0 rating</strong></div>
-              <div class="summary-item"><span>Availability</span><strong data-slot-available>0 slots</strong></div>
+            <div class="booking-summary-strip">
+              <div class="booking-summary-card"><span>Rate</span><strong data-slot-price>Rs. 0/hr</strong></div>
+              <div class="booking-summary-card"><span>Rating</span><strong data-slot-rating>0 rating</strong></div>
+              <div class="booking-summary-card"><span>Availability</span><strong data-slot-available>0 available</strong></div>
             </div>
-            <div style="margin-top: 16px;">
-              <span class="eyebrow" style="margin-bottom: 6px; display: block;">Interactive Pin</span>
+            <div style="margin-top: 18px;">
+              <span class="eyebrow" style="margin-bottom: 8px; display: block;">Interactive Pin & Route</span>
+              
+              <!-- Route Planner (FROM / TO) -->
+              <div class="route-planner-bar">
+                <div class="route-field-group">
+                  <label for="routeOriginInput">FROM</label>
+                  <div class="route-input-wrap">
+                    <input type="text" id="routeOriginInput" placeholder="Current Location or landmark" value="Current Location">
+                    <button type="button" id="useGpsOriginBtn" class="btn-origin-gps" title="Use Live GPS Location">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
+                      GPS
+                    </button>
+                  </div>
+                </div>
+                <div class="route-field-group">
+                  <label>TO</label>
+                  <div class="route-dest-display" id="routeDestDisplay" data-slot-name>Parking Slot</div>
+                </div>
+                <button type="button" class="btn btn-secondary btn-small" id="getSlotRouteBtn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+                  Refresh Route
+                </button>
+              </div>
+
+              <div id="routeInfoDisplay" style="display:none; margin: 10px 0; font-size: 0.85rem; padding: 8px 12px; border-radius: 8px; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); color: #7dd3fc; text-align: center;"></div>
               <div id="slotDetailMap" class="map-canvas-small"></div>
             </div>
             <div class="divider"></div>
@@ -181,10 +253,10 @@
               <div class="field">
                 <label for="paymentMode">Payment method</label>
                 <select id="paymentMode" name="paymentMode" required>
-                  <option value="UPI">UPI (Free Instant QR)</option>
-                  <option value="Card">Card (Zero-Fee Test Card)</option>
+                  <option value="UPI">UPI</option>
+                  <option value="Card">Card</option>
                   <option value="Cash">Cash on Arrival</option>
-                  <option value="Bank transfer">Bank transfer</option>
+                  <option value="Bank transfer">Bank Transfer</option>
                 </select>
               </div>
             </div>
@@ -194,10 +266,10 @@
           <aside class="data-panel">
             <h2 data-booking-slot>Parking slot</h2>
             <p class="muted" data-booking-address>Address</p>
-            <div class="summary-strip">
-              <div class="summary-item"><span>Rate</span><strong data-booking-rate>Rs. 0 / hour</strong></div>
-              <div class="summary-item"><span>Total</span><strong data-booking-total>Rs. 0</strong></div>
-              <div class="summary-item"><span>Payment</span><strong>Paid by driver</strong></div>
+            <div class="booking-summary-strip">
+              <div class="booking-summary-card"><span>Rate</span><strong data-booking-rate>Rs. 0/hr</strong></div>
+              <div class="booking-summary-card"><span>Total</span><strong data-booking-total>Rs. 0</strong></div>
+              <div class="booking-summary-card"><span>Payment</span><strong>Paid by driver</strong></div>
             </div>
             <div class="divider"></div>
             <div class="payment-preview-card" id="paymentMethodDetails">

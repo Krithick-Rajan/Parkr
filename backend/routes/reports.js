@@ -9,11 +9,12 @@ router.get("/", (req, res) => {
   const bookings = db.bookings || [];
   const payments = db.payments || [];
 
-  const paidBookings = bookings.filter((b) => String(b.status).toLowerCase() === "paid");
-  const paidPayments = payments.filter((p) => String(p.paymentStatus || p.status).toLowerCase() === "paid");
+  const paidBookings = bookings.filter((b) => {
+    const s = String(b.status || "").toLowerCase();
+    return s === "paid" || s === "completed" || s === "confirmed";
+  });
 
-  const revenue = paidPayments.reduce((acc, p) => acc + Number(p.amount || 0), 0)
-    || paidBookings.reduce((acc, b) => acc + Number(b.amount || 0), 0);
+  const revenue = paidBookings.reduce((acc, b) => acc + Number(b.amount || 0), 0);
 
   const pendingSlots = slots.filter((s) => String(s.verificationStatus || s.status).toLowerCase() === "pending").length;
   const approvedSlots = slots.filter((s) => String(s.verificationStatus || s.status).toLowerCase() === "approved").length;
@@ -21,7 +22,8 @@ router.get("/", (req, res) => {
   res.json({
     users: users.length,
     slots: slots.length,
-    bookings: bookings.length,
+    bookings: paidBookings.length,
+    totalBookings: bookings.length,
     revenue,
     pendingSlots,
     approvedSlots,

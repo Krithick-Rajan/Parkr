@@ -119,7 +119,9 @@
             <td>${ParkrUtils.formatCurrency(booking.amount)}</td>
             <td><span class="status ${paymentStatus(booking)}">${paymentStatus(booking)}</span></td>
             <td>
-              <button class="btn btn-secondary btn-small" type="button" data-cancel-booking="${attr(booking.id)}"${isCancelled ? " disabled" : ""}>${isCancelled ? "Cancelled" : "Cancel"}</button>
+              ${isCancelled
+                ? `<button class="btn btn-danger btn-small" type="button" data-delete-booking="${attr(booking.id || booking.bookingId)}" data-booking-code="${ParkrUtils.displayId(booking, "BK", index)}">Delete</button>`
+                : `<button class="btn btn-secondary btn-small" type="button" data-cancel-booking="${attr(booking.id || booking.bookingId)}">Cancel</button>`}
             </td>
           </tr>
         `;
@@ -298,10 +300,47 @@
 
       const refreshUsersBtn = event.target.closest("#refreshUsersBtn");
       if (refreshUsersBtn) {
+        const svg = refreshUsersBtn.querySelector("svg");
+        if (svg) svg.classList.add("spin-icon");
         setTableLoading(document.querySelector("#adminUserRows"), 6, "Refreshing users...");
         await ParkrStore.listUsers(true);
         await renderUsers();
+        if (svg) setTimeout(() => svg.classList.remove("spin-icon"), 650);
         Parkr.showToast("Users refreshed");
+        return;
+      }
+
+      const refreshBookingsBtn = event.target.closest("#refreshBookingsBtn");
+      if (refreshBookingsBtn) {
+        const svg = refreshBookingsBtn.querySelector("svg");
+        if (svg) svg.classList.add("spin-icon");
+        setTableLoading(document.querySelector("#adminBookingRows"), 7, "Refreshing bookings...");
+        await ParkrStore.listBookings({ forceRefresh: true });
+        await renderBookings();
+        if (svg) setTimeout(() => svg.classList.remove("spin-icon"), 650);
+        Parkr.showToast("Bookings refreshed");
+        return;
+      }
+
+      const clearCancelledBookingsBtn = event.target.closest("#clearCancelledBookingsBtn");
+      if (clearCancelledBookingsBtn) {
+        const allBookings = await ParkrStore.listBookings();
+        const cancelledCount = (allBookings || []).filter((b) => b.status === "cancelled").length;
+        if (cancelledCount === 0) {
+          Parkr.showToast("No cancelled bookings to clear");
+          return;
+        }
+        const confirmed = await Parkr.openFormDialog({
+          title: "Clear cancelled history",
+          description: `Permanently delete all ${cancelledCount} cancelled booking(s) from history?`,
+          submitLabel: "Clear history",
+          submitClass: "btn btn-danger",
+          fields: []
+        });
+        if (!confirmed) return;
+        await ParkrStore.clearCancelledBookings();
+        Parkr.showToast("Cancelled history cleared");
+        refreshPage();
         return;
       }
 
@@ -377,6 +416,25 @@
         }
         Parkr.showToast("Booking cancelled");
         refreshPage();
+        return;
+      }
+
+      const deleteBookingButton = event.target.closest("[data-delete-booking]");
+      if (deleteBookingButton) {
+        const bookingCode = deleteBookingButton.dataset.bookingCode || "this booking";
+        const confirmed = await Parkr.openFormDialog({
+          title: "Delete cancelled booking",
+          description: `Permanently delete ${bookingCode} from booking history?`,
+          submitLabel: "Delete from history",
+          submitClass: "btn btn-danger",
+          fields: []
+        });
+        if (!confirmed) return;
+        const bookingId = deleteBookingButton.dataset.deleteBooking;
+        await ParkrStore.deleteBooking(bookingId);
+        Parkr.showToast("Booking deleted from history");
+        refreshPage();
+        return;
       }
     });
   }

@@ -366,6 +366,7 @@ import { firebaseConfig, isFirebaseConfigured } from "../../firebase/firebase-co
       listBookings: (settings) => listCollection("bookings", settings),
       saveBooking: (booking) => saveRecord("bookings", booking),
       updateBookingStatus: (bookingId, status) => updateRecord("bookings", bookingId, { status }),
+      deleteBooking: (bookingId) => deleteRecord("bookings", bookingId),
       listPayments: () => listCollection("payments"),
       savePayment: (payment) => saveRecord("payments", payment),
       uploadFile

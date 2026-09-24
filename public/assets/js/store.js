@@ -4,6 +4,7 @@
     slots: "parkrSlots",
     bookings: "parkrBookings",
     payments: "parkrPayments",
+    reviews: "parkrReviews",
     dataVersion: "parkrDataVersion"
   };
   const DATA_VERSION = "parkr-v4-cloud-sync";
@@ -317,8 +318,46 @@
     }
   } catch (_) {}
 
-  function knownRoleForEmail() {
+  function knownRoleForEmail(email) {
+    const text = normalizeText(email);
+    if (!text) return "";
+    if (text.includes("admin")) return "admin";
+    if (text.includes("owner") || text === "sri@parkr.com") return "owner";
+    if (text.includes("driver") || text === "reshmi@parkr.com") return "driver";
     return "";
+  }
+
+  function makeUser(data) {
+    const knownRole = knownRoleForEmail((data || {}).email);
+    const role = knownRole || normalizeText((data || {}).role) || "driver";
+    const cleanData = { ...data, role };
+    if (role === "owner") return new global.ParkrModels.ParkingOwner(cleanData).toRecord();
+    if (role === "admin") return new global.ParkrModels.Admin(cleanData).toRecord();
+    return new global.ParkrModels.Driver(cleanData).toRecord();
+  }
+
+  function makeSlot(data) {
+    return new global.ParkrModels.ParkingSlot(data).toRecord();
+  }
+
+  function makeBooking(data) {
+    return new global.ParkrModels.Booking(data).toRecord();
+  }
+
+  function makePayment(data) {
+    return new global.ParkrModels.Payment(data).toRecord();
+  }
+
+  function normalizeSlotRecord(data) {
+    return makeSlot(data);
+  }
+
+  function normalizeBookingRecord(data) {
+    return makeBooking(data);
+  }
+
+  function normalizePaymentRecord(data) {
+    return makePayment(data);
   }
 
   function migrateStoredData() {
@@ -350,33 +389,186 @@
     }
   }
 
-  function makeUser(data) {
-    const knownRole = knownRoleForEmail((data || {}).email);
-    const role = knownRole || normalizeText((data || {}).role) || "driver";
-    const cleanData = { ...data, role };
-    if (role === "owner") return new global.ParkrModels.ParkingOwner(cleanData).toRecord();
-    if (role === "admin") return new global.ParkrModels.Admin(cleanData).toRecord();
-    return new global.ParkrModels.Driver(cleanData).toRecord();
-  }
-
-  function makeSlot(data) {
-    return new global.ParkrModels.ParkingSlot(data).toRecord();
-  }
-
-  function makeBooking(data) {
-    return new global.ParkrModels.Booking(data).toRecord();
-  }
-
-  function makePayment(data) {
-    return new global.ParkrModels.Payment(data).toRecord();
-  }
-
   function seedUsers() {
-    return [];
+    return [
+      {
+        id: "USR-001",
+        userId: "USR-001",
+        displayId: "USR-001",
+        name: "Platform Admin",
+        email: "admin@parkr.com",
+        phone: "+91 98765 00001",
+        role: "admin",
+        status: "approved"
+      },
+      {
+        id: "USR-002",
+        userId: "USR-002",
+        displayId: "USR-002",
+        name: "Sri",
+        email: "sri@parkr.com",
+        phone: "+91 98765 00002",
+        role: "owner",
+        status: "approved",
+        business: "Sri Parking Hub"
+      },
+      {
+        id: "USR-003",
+        userId: "USR-003",
+        displayId: "USR-003",
+        name: "Reshmi",
+        email: "reshmi@parkr.com",
+        phone: "+91 98765 00003",
+        role: "driver",
+        status: "approved",
+        vehicle: "KA 01 AB 1234"
+      }
+    ];
   }
 
   function seedSlots() {
-    return [];
+    return [
+      {
+        id: "SL-001",
+        slotId: "SL-001",
+        displayId: "SL-001",
+        name: "MG Road Metro Parking",
+        location: "MG Road, Bengaluru",
+        address: "12/4 MG Road, near Metro Station, Bengaluru",
+        lat: 12.9756,
+        lng: 77.6067,
+        price: 50,
+        pricePerHour: 50,
+        vehicle: "Car",
+        vehicleType: "Car",
+        total: 25,
+        totalSlots: 25,
+        available: 25,
+        availableSlots: 25,
+        status: "approved",
+        verificationStatus: "approved",
+        availabilityStatus: "available",
+        rating: 4.8,
+        open: "06:00",
+        close: "23:00",
+        ownerId: "USR-002",
+        owner: "Sri",
+        ownerEmail: "sri@parkr.com",
+        features: ["CCTV", "Covered", "Security Guard", "EV Charging"]
+      },
+      {
+        id: "SL-002",
+        slotId: "SL-002",
+        displayId: "SL-002",
+        name: "Indiranagar 100ft Space",
+        location: "100 Feet Rd, Indiranagar, Bengaluru",
+        address: "454 100 Feet Rd, Indiranagar, Bengaluru",
+        lat: 12.9784,
+        lng: 77.6408,
+        price: 35,
+        pricePerHour: 35,
+        vehicle: "Bike",
+        vehicleType: "Bike",
+        total: 40,
+        totalSlots: 40,
+        available: 40,
+        availableSlots: 40,
+        status: "approved",
+        verificationStatus: "approved",
+        availabilityStatus: "available",
+        rating: 4.6,
+        open: "07:00",
+        close: "22:00",
+        ownerId: "USR-002",
+        owner: "Sri",
+        ownerEmail: "sri@parkr.com",
+        features: ["CCTV", "Well Lit", "Easy Exit"]
+      },
+      {
+        id: "SL-003",
+        slotId: "SL-003",
+        displayId: "SL-003",
+        name: "Koramangala 5th Block Hub",
+        location: "5th Block, Koramangala, Bengaluru",
+        address: "18 80 Feet Road, 5th Block Koramangala, Bengaluru",
+        lat: 12.9352,
+        lng: 77.6245,
+        price: 60,
+        pricePerHour: 60,
+        vehicle: "Car",
+        vehicleType: "Car",
+        total: 20,
+        totalSlots: 20,
+        available: 20,
+        availableSlots: 20,
+        status: "approved",
+        verificationStatus: "approved",
+        availabilityStatus: "available",
+        rating: 4.9,
+        open: "08:00",
+        close: "23:59",
+        ownerId: "USR-002",
+        owner: "Sri",
+        ownerEmail: "sri@parkr.com",
+        features: ["Valet Assistance", "Covered", "CCTV", "24/7 Access"]
+      },
+      {
+        id: "SL-005",
+        slotId: "SL-005",
+        displayId: "SL-005",
+        name: "Sridevi Parking",
+        location: "Sridevi Nagar, Coimbatore.",
+        address: "Sridevi Nagar, Coimbatore.",
+        lat: 11.0168,
+        lng: 76.9558,
+        price: 50,
+        pricePerHour: 50,
+        vehicle: "Any Vehicle",
+        vehicleType: "Any Vehicle",
+        total: 30,
+        totalSlots: 30,
+        available: 30,
+        availableSlots: 30,
+        status: "approved",
+        verificationStatus: "approved",
+        availabilityStatus: "available",
+        rating: 4.5,
+        open: "06:00",
+        close: "00:00",
+        ownerId: "USR-002",
+        owner: "Sri",
+        ownerEmail: "sri@parkr.com",
+        features: ["CCTV", "24/7 Security"]
+      },
+      {
+        id: "SL-006",
+        slotId: "SL-006",
+        displayId: "SL-006",
+        name: "Codissia Parking",
+        location: "Coddissia Ground, Coimbatore.",
+        address: "Coddissia Ground, Coimbatore.",
+        lat: 11.0378,
+        lng: 77.0326,
+        price: 50,
+        pricePerHour: 50,
+        vehicle: "Any Vehicle",
+        vehicleType: "Any Vehicle",
+        total: 80,
+        totalSlots: 80,
+        available: 79,
+        availableSlots: 79,
+        status: "approved",
+        verificationStatus: "approved",
+        availabilityStatus: "available",
+        rating: 4.5,
+        open: "06:00",
+        close: "00:00",
+        ownerId: "USR-002",
+        owner: "Sri",
+        ownerEmail: "sri@parkr.com",
+        features: ["CCTV", "Well Lit", "Gated Security"]
+      }
+    ];
   }
 
   function seedBookings() {
@@ -385,6 +577,44 @@
 
   function seedPayments() {
     return [];
+  }
+
+  function seedReviews() {
+    return [
+      {
+        id: "REV-001",
+        reviewId: "REV-001",
+        slotId: "SL-006",
+        slotName: "Codissia Parking",
+        driverId: "USR-003",
+        driverName: "Reshmi",
+        rating: 5,
+        comment: "Spacious and very secure parking. Gate staff guided promptly.",
+        createdAt: "2026-09-23T08:30:00.000Z"
+      },
+      {
+        id: "REV-002",
+        reviewId: "REV-002",
+        slotId: "SL-001",
+        slotName: "MG Road Metro Parking",
+        driverId: "USR-004",
+        driverName: "Giri",
+        rating: 4,
+        comment: "Convenient spot near the metro station. Easy access during peak hours.",
+        createdAt: "2026-09-23T09:15:00.000Z"
+      },
+      {
+        id: "REV-003",
+        reviewId: "REV-003",
+        slotId: "SL-002",
+        slotName: "Indiranagar 100ft Space",
+        driverId: "USR-003",
+        driverName: "Reshmi",
+        rating: 5,
+        comment: "Wide entrance and shaded parking. Very satisfied with the service!",
+        createdAt: "2026-09-23T09:45:00.000Z"
+      }
+    ];
   }
 
   function listLocalUsers() {
@@ -401,6 +631,10 @@
 
   function listLocalPayments() {
     return getCollection(STORAGE.payments, seedPayments()).map(makePayment);
+  }
+
+  function listLocalReviews() {
+    return getCollection(STORAGE.reviews, seedReviews());
   }
 
   function currentUserFromStorage() {
@@ -813,12 +1047,18 @@
       const rows = await listSlots({ publicOnly: true });
       const location = normalizeText(settings.location);
       const vehicle = normalizeText(settings.vehicle);
-      const maxPrice = Number(settings.maxPrice || settings.price || 999999);
+      const isAnyVehicle = !vehicle || vehicle === "any" || vehicle === "any vehicle" || vehicle === "all";
+      const isAnyPrice = !settings.maxPrice || isNaN(Number(settings.maxPrice)) || Number(settings.maxPrice) >= 9999;
+      const effectiveMaxPrice = isAnyPrice ? Infinity : Number(settings.maxPrice);
+
       return (rows || []).filter((slot) => {
         const haystack = normalizeText((slot.name || "") + " " + (slot.address || "") + " " + (slot.location || "") + " " + (slot.area || ""));
         const matchesLocation = !location || haystack.includes(location);
-        const matchesVehicle = !vehicle || normalizeText(slot.vehicleType || slot.vehicle) === vehicle;
-        return matchesLocation && matchesVehicle && Number(slot.price || 0) <= maxPrice;
+        const slotVehicle = normalizeText(slot.vehicleType || slot.vehicle);
+        const isSlotUniversal = !slotVehicle || slotVehicle === "any vehicle" || slotVehicle === "any" || slotVehicle === "all" || slotVehicle.includes("any") || slotVehicle.includes("both");
+        const matchesVehicle = isAnyVehicle || isSlotUniversal || slotVehicle === vehicle;
+        const matchesPrice = Number(slot.price || 0) <= effectiveMaxPrice;
+        return matchesLocation && matchesVehicle && matchesPrice;
       });
     } catch (err) {
       console.warn("[Store] searchSlots error:", err);
@@ -828,9 +1068,15 @@
 
   async function getSlot(slotId) {
     if (!slotId) return null;
+    const norm = String(slotId).trim().toLowerCase();
     try {
       const all = await listSlots({ adminOnly: true });
-      return (all || []).find((slot) => slot.id === slotId || slot.slotId === slotId) || null;
+      return (all || []).find((slot) => {
+        const sId = String(slot.id || "").toLowerCase();
+        const sSlotId = String(slot.slotId || "").toLowerCase();
+        const sDisplayId = String(slot.displayId || "").toLowerCase();
+        return sId === norm || sSlotId === norm || sDisplayId === norm;
+      }) || null;
     } catch (err) {
       console.warn("[Store] getSlot error:", err);
       return null;
@@ -1087,6 +1333,7 @@
 
   async function updateBookingStatus(bookingId, status) {
     invalidateCache("bookings");
+    invalidateCache("payments");
     const normalized = normalizeStatus(status);
     const backend = await getBackend();
     if (backend && backend.updateBookingStatus) {
@@ -1104,7 +1351,61 @@
     } catch (err) {}
     const rows = listLocalBookings().map((booking) => (booking.id === bookingId || booking.bookingId === bookingId ? { ...booking, status: normalized } : booking));
     setCollection(STORAGE.bookings, rows);
+
+    if (normalized === "cancelled") {
+      const payments = listLocalPayments().map((p) => {
+        if (p.bookingId === bookingId) {
+          return { ...p, status: "refunded", paymentStatus: "refunded" };
+        }
+        return p;
+      });
+      setCollection(STORAGE.payments, payments);
+    }
+
     return rows.find((booking) => booking.id === bookingId || booking.bookingId === bookingId);
+  }
+
+  async function deleteBooking(bookingId) {
+    invalidateCache("bookings");
+    invalidateCache("payments");
+    const backend = await getBackend();
+    if (backend && backend.deleteBooking) {
+      try {
+        await backend.deleteBooking(bookingId);
+      } catch (err) {
+        console.warn("[Store] Cloud deleteBooking failed:", err.message);
+      }
+    }
+    try {
+      await apiJson(`/api/bookings/${encodeURIComponent(bookingId)}`, { method: "DELETE" });
+    } catch (err) {}
+    const rows = listLocalBookings().filter((booking) => booking.id !== bookingId && booking.bookingId !== bookingId && booking.displayId !== bookingId);
+    setCollection(STORAGE.bookings, rows);
+    const payments = listLocalPayments().filter((p) => p.bookingId !== bookingId);
+    setCollection(STORAGE.payments, payments);
+    return true;
+  }
+
+  async function clearCancelledBookings() {
+    invalidateCache("bookings");
+    const backend = await getBackend();
+    const rows = listLocalBookings();
+    const cancelled = rows.filter((booking) => booking.status === "cancelled");
+    for (const booking of cancelled) {
+      const id = booking.id || booking.bookingId;
+      if (backend && backend.deleteBooking) {
+        try { await backend.deleteBooking(id); } catch (e) {}
+      }
+      try {
+        await apiJson(`/api/bookings/${encodeURIComponent(id)}`, { method: "DELETE" });
+      } catch (e) {}
+    }
+    try {
+      await apiJson("/api/bookings/clear/cancelled", { method: "DELETE" });
+    } catch (e) {}
+    const remaining = rows.filter((booking) => booking.status !== "cancelled");
+    setCollection(STORAGE.bookings, remaining);
+    return true;
   }
 
   async function listPayments(forceRefresh = false) {
@@ -1165,21 +1466,77 @@
     return upsertLocal(STORAGE.payments, seedPayments(), record);
   }
 
+  async function listReviews(slotId) {
+    let apiReviews = [];
+    try {
+      if (slotId) {
+        apiReviews = await listApiRows(`/api/slots/${encodeURIComponent(slotId)}/reviews`);
+      }
+    } catch (e) {}
+    const local = listLocalReviews();
+    const rows = mergeById(apiReviews, local);
+    if (slotId) {
+      return rows.filter((r) => r.slotId === slotId);
+    }
+    return rows;
+  }
+
+  async function saveReview(review) {
+    const local = listLocalReviews();
+    const reviewId = readableIdFrom(review, "REV") || nextReadableId("REV", local);
+    const record = {
+      ...review,
+      id: reviewId,
+      reviewId,
+      rating: Number(review.rating) || 5,
+      createdAt: review.createdAt || new Date().toISOString()
+    };
+    try {
+      const resp = await apiJson(`/api/slots/${encodeURIComponent(record.slotId)}/reviews`, {
+        method: "POST",
+        body: JSON.stringify(record)
+      });
+      if (resp && resp.review) {
+        Object.assign(record, resp.review);
+      }
+    } catch (e) {
+      console.warn("[Store] API saveReview failed, saving locally:", e.message);
+    }
+    upsertLocal(STORAGE.reviews, seedReviews(), record);
+    
+    // Recalculate local slot rating if slot exists locally
+    const slotReviews = listLocalReviews().filter((r) => r.slotId === record.slotId);
+    if (slotReviews.length) {
+      const sum = slotReviews.reduce((acc, r) => acc + (Number(r.rating) || 0), 0);
+      const avg = Number((sum / slotReviews.length).toFixed(1));
+      const slots = listLocalSlots();
+      const targetSlot = slots.find((s) => s.id === record.slotId || s.slotId === record.slotId);
+      if (targetSlot) {
+        targetSlot.rating = avg;
+        targetSlot.reviewsCount = slotReviews.length;
+        setCollection(STORAGE.slots, slots);
+      }
+    }
+    invalidateCache("slots");
+    return record;
+  }
+
   async function getReports() {
-    const [users, slots, bookings, payments] = await Promise.all([
+    const [users, slots, bookings] = await Promise.all([
       listUsers(),
       listSlots({ adminOnly: true }),
-      listBookings(),
-      listPayments()
+      listBookings()
     ]);
-    const paidPayments = payments.filter(isPaidRecord);
-    const paidBookings = bookings.filter(isPaidRecord);
-    const revenue = paidPayments.reduce((total, payment) => total + Number(payment.amount || 0), 0)
-      || paidBookings.reduce((total, booking) => total + Number(booking.amount || 0), 0);
+    const paidBookings = bookings.filter((b) => {
+      const s = normalizeStatus((b || {}).status || (b || {}).paymentStatus);
+      return ["paid", "confirmed", "completed"].includes(s);
+    });
+    const revenue = paidBookings.reduce((total, booking) => total + Number(booking.amount || 0), 0);
     return {
       users: users.length,
       slots: slots.length,
-      bookings: bookings.length,
+      bookings: paidBookings.length,
+      totalBookings: bookings.length,
       revenue
     };
   }
@@ -1255,8 +1612,12 @@
     listBookings,
     saveBooking,
     updateBookingStatus,
+    deleteBooking,
+    clearCancelledBookings,
     listPayments,
     savePayment,
+    listReviews,
+    saveReview,
     uploadFile,
     getReports,
     invalidateCache

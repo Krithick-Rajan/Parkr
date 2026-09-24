@@ -38,41 +38,127 @@
     return String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0");
   }
 
+  if (typeof window !== "undefined") {
+    window.parkrDriverLocation = window.parkrDriverLocation || { lat: 11.0168, lng: 76.9558 };
+    if (typeof navigator !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          window.parkrDriverLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        },
+        () => {},
+        { timeout: 3000 }
+      );
+    }
+  }
+
   let searchMapInstance = null;
   let detailMapInstance = null;
+  let searchRouteLayer = null;
+  let searchDriverMarker = null;
+
+  window.parkrDrawSearchRoute = async function(destLat, destLng, destName) {
+    if (!searchMapInstance || typeof L === "undefined") return;
+
+    if (typeof Parkr !== "undefined" && Parkr.showToast) {
+      Parkr.showToast("Calculating route via OSRM...");
+    }
+
+    const getUserCoords = () => new Promise((resolve) => {
+      if (!navigator.geolocation) return resolve([Number(destLat) - 0.025, Number(destLng) - 0.02]);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve([pos.coords.latitude, pos.coords.longitude]),
+        () => resolve([Number(destLat) - 0.025, Number(destLng) - 0.02]),
+        { timeout: 4000 }
+      );
+    });
+
+    const [userLat, userLng] = await getUserCoords();
+    const routeData = await ParkrUtils.getOsrmRoute(userLng, userLat, destLng, destLat);
+
+    if (searchRouteLayer) {
+      try { searchMapInstance.removeLayer(searchRouteLayer); } catch (_) {}
+      searchRouteLayer = null;
+    }
+    if (searchDriverMarker) {
+      try { searchMapInstance.removeLayer(searchDriverMarker); } catch (_) {}
+      searchDriverMarker = null;
+    }
+
+    if (routeData && routeData.geometry) {
+      searchRouteLayer = L.geoJSON(routeData.geometry, {
+        style: { color: "#f59e0b", weight: 5, opacity: 0.88, lineJoin: "round" }
+      }).addTo(searchMapInstance);
+
+      searchDriverMarker = L.marker([userLat, userLng]).addTo(searchMapInstance)
+        .bindPopup("<strong>Your Location</strong>");
+
+      try {
+        searchMapInstance.fitBounds(searchRouteLayer.getBounds().pad(0.18));
+      } catch (_) {}
+    }
+
+    if (typeof Parkr !== "undefined" && Parkr.showToast) {
+      if (routeData && routeData.summary) {
+        Parkr.showToast(`Route to ${destName}: ${routeData.distanceKm} km · ~${routeData.durationMins} mins`);
+      } else {
+        Parkr.showToast(`Route line drawn to ${destName}`);
+      }
+    }
+  };
 
   function renderSearchMap(slots) {
     const container = document.querySelector("#searchMap");
     if (!container || typeof L === "undefined") return;
 
     if (searchMapInstance) {
-      searchMapInstance.remove();
+      try { searchMapInstance.remove(); } catch (_) {}
       searchMapInstance = null;
+    }
+    if (container._leaflet_id) {
+      delete container._leaflet_id;
     }
 
     const validSlots = (slots || []).map((s, idx) => ({
       ...s,
-      lat: (s.lat !== undefined && s.lat !== null && !isNaN(Number(s.lat))) ? Number(s.lat) : (12.9716 + ((idx % 4) * 0.015) - 0.02),
-      lng: (s.lng !== undefined && s.lng !== null && !isNaN(Number(s.lng))) ? Number(s.lng) : (77.5946 + ((idx % 3) * 0.02) - 0.01)
+      lat: (s.lat !== undefined && s.lat !== null && !isNaN(Number(s.lat))) ? Number(s.lat) : (11.0168 + ((idx % 4) * 0.015) - 0.02),
+      lng: (s.lng !== undefined && s.lng !== null && !isNaN(Number(s.lng))) ? Number(s.lng) : (76.9558 + ((idx % 3) * 0.02) - 0.01)
     }));
 
-    const center = validSlots.length ? [validSlots[0].lat, validSlots[0].lng] : [12.9716, 77.5946];
-    searchMapInstance = L.map("searchMap").setView(center, 12);
+    const center = validSlots.length ? [validSlots[0].lat, validSlots[0].lng] : [11.0168, 76.9558];
+    searchMapInstance = L.map("searchMap", { attributionControl: false }).setView(center, 12);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; OpenStreetMap contributors',
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
       maxZoom: 19
     }).addTo(searchMapInstance);
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19
+    }).addTo(searchMapInstance);
+
+    const userLat = (window.parkrDriverLocation && window.parkrDriverLocation.lat) || 11.0168;
+    const userLng = (window.parkrDriverLocation && window.parkrDriverLocation.lng) || 76.9558;
 
     const markers = [];
     validSlots.forEach((slot) => {
       const marker = L.marker([slot.lat, slot.lng]).addTo(searchMapInstance);
+      const dLat = (slot.lat - userLat) * Math.PI / 180;
+      const dLon = (slot.lng - userLng) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(userLat * Math.PI / 180) * Math.cos(slot.lat * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const dist = (6371 * c).toFixed(1);
+      const approxMins = Math.max(3, Math.round(dist * 2.2));
+
       const popupHtml = `
         <div class="map-popup-card">
           <h4>${h(slot.name)}</h4>
           <p>${h(slot.location || slot.address)}</p>
           <p><strong>${ParkrUtils.formatCurrency(slot.price)}/hr</strong> · ${slot.available} available</p>
-          <a class="btn btn-primary" href="#details?slot=${attr(slot.id)}">Details</a>
+          <p style="color: #38bdf8; font-size: 0.85rem; margin-top: 4px; font-weight: 600; display: flex; align-items: center; gap: 4px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>${dist} km away · ~${approxMins}m drive</p>
+          <div style="display: flex; gap: 6px; margin-top: 8px;">
+            <a class="btn btn-primary btn-small" href="#details?slot=${attr(slot.id)}">Details</a>
+            <button type="button" class="btn btn-secondary btn-small" onclick="window.parkrDrawSearchRoute(${slot.lat}, ${slot.lng}, '${attr(slot.name)}')">View Route</button>
+          </div>
         </div>
       `;
       marker.bindPopup(popupHtml);
@@ -98,17 +184,22 @@
     if (!container || typeof L === "undefined" || !slot) return;
 
     if (detailMapInstance) {
-      detailMapInstance.remove();
+      try { detailMapInstance.remove(); } catch (_) {}
       detailMapInstance = null;
+    }
+    if (container._leaflet_id) {
+      delete container._leaflet_id;
     }
 
     const lat = (slot.lat !== undefined && slot.lat !== null && !isNaN(Number(slot.lat))) ? Number(slot.lat) : 12.9716;
     const lng = (slot.lng !== undefined && slot.lng !== null && !isNaN(Number(slot.lng))) ? Number(slot.lng) : 77.5946;
 
-    detailMapInstance = L.map("slotDetailMap").setView([lat, lng], 15);
+    detailMapInstance = L.map("slotDetailMap", { attributionControl: false }).setView([lat, lng], 15);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; OpenStreetMap',
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19
+    }).addTo(detailMapInstance);
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {
       maxZoom: 19
     }).addTo(detailMapInstance);
 
@@ -173,9 +264,18 @@
     const list = document.querySelector("#slotResults");
     if (!form || !list) return;
 
+    const todayIso = new Date().toISOString().split("T")[0];
+    if (form.date) {
+      form.date.min = todayIso;
+    }
+
     const params = new URLSearchParams(window.location.search);
     const incomingLocation = params.get("location");
-    if (incomingLocation) form.location.value = incomingLocation;
+    if (incomingLocation && form.location) form.location.value = incomingLocation;
+    const incomingVehicle = params.get("vehicle");
+    if (incomingVehicle && form.vehicle) form.vehicle.value = incomingVehicle;
+    const incomingDate = params.get("date");
+    if (incomingDate && form.date) form.date.value = incomingDate;
 
     async function render() {
       const data = new FormData(form);
@@ -189,6 +289,26 @@
           ? filtered.map((slot) => ParkrUtils.renderSlotCard(slot)).join("")
           : "<div class=\"empty-state\"><div><h3>No matching slots</h3><p>Try another location, vehicle type, or price limit.</p></div></div>";
         renderSearchMap(filtered || []);
+
+        if ((!filtered || !filtered.length) && data.get("location") && searchMapInstance) {
+          const locQuery = data.get("location").trim();
+          if (locQuery.length > 2) {
+            try {
+              const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(locQuery)}`);
+              if (resp.ok) {
+                const geoData = await resp.json();
+                if (geoData && geoData.length > 0) {
+                  const gLat = parseFloat(geoData[0].lat);
+                  const gLng = parseFloat(geoData[0].lon);
+                  searchMapInstance.flyTo([gLat, gLng], 13, { duration: 0.8 });
+                  L.popup().setLatLng([gLat, gLng])
+                    .setContent(`<strong>${h(geoData[0].display_name.slice(0, 42))}</strong><br><span style="color:#f59e0b">No verified slots in this area yet.</span>`)
+                    .openOn(searchMapInstance);
+                }
+              }
+            } catch (_) {}
+          }
+        }
       } catch (err) {
         list.innerHTML = "<div class=\"empty-state\"><div><h3>No matching slots</h3><p>Try another location, vehicle type, or price limit.</p></div></div>";
         renderSearchMap([]);
@@ -214,11 +334,12 @@
       });
       return;
     }
+    const slotRatingNum = (slot.rating !== undefined && slot.rating !== null && !isNaN(Number(slot.rating))) ? Number(slot.rating) : 5.0;
     document.querySelectorAll("[data-slot-name]").forEach((item) => { item.textContent = slot.name; });
     document.querySelectorAll("[data-slot-address]").forEach((item) => { item.textContent = slot.address; });
-    document.querySelectorAll("[data-slot-price]").forEach((item) => { item.textContent = ParkrUtils.formatCurrency(slot.price) + " / hour"; });
-    document.querySelectorAll("[data-slot-rating]").forEach((item) => { item.textContent = slot.rating + " rating"; });
-    document.querySelectorAll("[data-slot-available]").forEach((item) => { item.textContent = slot.available + " slots available"; });
+    document.querySelectorAll("[data-slot-price]").forEach((item) => { item.textContent = ParkrUtils.formatCurrency(slot.price) + "/hr"; });
+    document.querySelectorAll("[data-slot-rating]").forEach((item) => { item.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="1" style="vertical-align: -1px; margin-right: 3px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>${slotRatingNum.toFixed(1)}`; });
+    document.querySelectorAll("[data-slot-available]").forEach((item) => { item.textContent = slot.available + " available"; });
     const featureList = document.querySelector("#slotFeatures");
     if (featureList) featureList.innerHTML = (slot.features || []).map((feature) => `<span class="pill">${h(feature)}</span>`).join("");
     document.querySelectorAll("[data-booking-link]").forEach((link) => { link.href = "#booking?slot=" + encodeURIComponent(slot.id); });
@@ -235,6 +356,279 @@
     }
 
     renderDetailMap(slot);
+
+    // Interactive Route Planning (FROM -> TO)
+    const routeBtn = document.querySelector("#getSlotRouteBtn");
+    const routeInfo = document.querySelector("#routeInfoDisplay");
+    const originInput = document.querySelector("#routeOriginInput");
+    const gpsBtn = document.querySelector("#useGpsOriginBtn");
+    const destDisplay = document.querySelector("#routeDestDisplay");
+    let detailRouteLayer = null;
+    let detailDriverMarker = null;
+
+    if (destDisplay) {
+      destDisplay.textContent = slot.name || "Selected Parking Slot";
+    }
+
+    async function calculateDrivingRoute(useLiveGps = false) {
+      const slotLat = (slot.lat !== undefined && slot.lat !== null && !isNaN(Number(slot.lat))) ? Number(slot.lat) : 11.0168;
+      const slotLng = (slot.lng !== undefined && slot.lng !== null && !isNaN(Number(slot.lng))) ? Number(slot.lng) : 76.9558;
+
+      if (routeBtn) {
+        routeBtn.disabled = true;
+        routeBtn.textContent = "Calculating route...";
+      }
+      if (routeInfo) {
+        routeInfo.style.display = "block";
+        routeInfo.innerHTML = `<span style="display:inline-flex; align-items:center; gap:6px; color:#38bdf8;">Finding driving path...</span>`;
+      }
+
+      let userLat = 11.0168;
+      let userLng = 76.9558;
+      let originLabel = "Your Location";
+
+      const query = originInput ? originInput.value.trim() : "";
+      const isCurrentLoc = useLiveGps || !query || query.toLowerCase() === "current location" || query.toLowerCase() === "my location";
+
+      if (isCurrentLoc) {
+        if (originInput) originInput.value = "Current Location";
+        const coords = await new Promise((resolve) => {
+          if (!navigator.geolocation) return resolve([slotLat - 0.025, slotLng - 0.02]);
+          navigator.geolocation.getCurrentPosition(
+            (pos) => resolve([pos.coords.latitude, pos.coords.longitude]),
+            () => resolve([slotLat - 0.025, slotLng - 0.02]),
+            { timeout: 4000 }
+          );
+        });
+        userLat = coords[0];
+        userLng = coords[1];
+        originLabel = "Current Location";
+      } else {
+        // Geocode custom location query (e.g. Gandhipuram, Airport, Railway station)
+        const geoResult = await ParkrUtils.geocodeWithNominatim(query);
+        if (geoResult && geoResult.lat && geoResult.lng) {
+          userLat = geoResult.lat;
+          userLng = geoResult.lng;
+          originLabel = geoResult.displayName.split(",")[0] || query;
+        } else {
+          userLat = slotLat - 0.025;
+          userLng = slotLng - 0.02;
+          originLabel = query;
+        }
+      }
+
+      const routeData = await ParkrUtils.getOsrmRoute(userLng, userLat, slotLng, slotLat);
+
+      if (detailMapInstance && routeData && routeData.geometry) {
+        if (detailRouteLayer) {
+          try { detailMapInstance.removeLayer(detailRouteLayer); } catch (_) {}
+          detailRouteLayer = null;
+        }
+        if (detailDriverMarker) {
+          try { detailMapInstance.removeLayer(detailDriverMarker); } catch (_) {}
+          detailDriverMarker = null;
+        }
+
+        detailRouteLayer = L.geoJSON(routeData.geometry, {
+          style: { color: "#f59e0b", weight: 5, opacity: 0.9, lineJoin: "round" }
+        }).addTo(detailMapInstance);
+
+        detailDriverMarker = L.marker([userLat, userLng]).addTo(detailMapInstance)
+          .bindPopup(`<strong>FROM: ${h(originLabel)}</strong>`).openPopup();
+
+        try {
+          detailMapInstance.fitBounds(detailRouteLayer.getBounds().pad(0.18));
+        } catch (_) {}
+      }
+
+      if (routeInfo) {
+        if (routeData && routeData.distanceKm !== null) {
+          routeInfo.innerHTML = `<span style="display:inline-flex; align-items:center; gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg><strong>Route:</strong> ${routeData.distanceKm} km · ~${routeData.durationMins} mins</span>`;
+        } else {
+          routeInfo.innerHTML = `<span style="display:inline-flex; align-items:center; gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Route line drawn from ${h(originLabel)} to slot</span>`;
+        }
+      }
+
+      if (routeBtn) {
+        routeBtn.disabled = false;
+        routeBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>Refresh Route`;
+      }
+    }
+
+    if (routeBtn) {
+      routeBtn.onclick = () => calculateDrivingRoute(false);
+    }
+    if (gpsBtn) {
+      gpsBtn.onclick = () => calculateDrivingRoute(true);
+    }
+    if (originInput) {
+      originInput.onkeydown = (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          calculateDrivingRoute(false);
+        }
+      };
+    }
+
+    // Automatically calculate initial driving route upon opening details
+    setTimeout(() => {
+      calculateDrivingRoute(false);
+    }, 350);
+
+    // Reviews list and review submission
+    const reviewsList = document.querySelector("#slotReviewsList");
+    const toggleBtn = document.querySelector("#toggleReviewBtn");
+    const writeForm = document.querySelector("#writeReviewForm");
+    const cancelBtn = document.querySelector("#cancelReviewBtn");
+    const driverNameInput = document.querySelector("#reviewDriverName");
+
+    const driverUser = currentDriver();
+    if (driverUser && driverNameInput && !driverNameInput.value) {
+      driverNameInput.value = driverUser.name || driverUser.fullName || driverUser.email || "";
+    }
+
+    // Interactive Star Rating Widget
+    const starContainer = document.querySelector("#interactiveStars");
+    const ratingInput = document.querySelector("#reviewRating");
+    const starLabel = document.querySelector("#starRatingLabel");
+    const ratingLabels = {
+      1: "1 Star · Terrible",
+      2: "2 Stars · Poor",
+      3: "3 Stars · Average",
+      4: "4 Stars · Good",
+      5: "5 Stars · Excellent"
+    };
+
+    if (starContainer && !starContainer.dataset.bound) {
+      starContainer.dataset.bound = "true";
+      const stars = starContainer.querySelectorAll(".star-item");
+
+      const updateStars = (val) => {
+        stars.forEach((s) => {
+          const sVal = Number(s.dataset.value);
+          s.classList.toggle("is-active", sVal <= val);
+        });
+      };
+
+      stars.forEach((star) => {
+        star.addEventListener("mouseenter", () => {
+          const val = Number(star.dataset.value);
+          stars.forEach((s) => {
+            const sVal = Number(s.dataset.value);
+            s.classList.toggle("is-hovered", sVal <= val);
+          });
+          if (starLabel) starLabel.textContent = ratingLabels[val] || `${val} Stars`;
+        });
+
+        star.addEventListener("mouseleave", () => {
+          stars.forEach((s) => s.classList.remove("is-hovered"));
+          const currentVal = Number(ratingInput ? ratingInput.value : 5);
+          if (starLabel) starLabel.textContent = ratingLabels[currentVal] || `${currentVal} Stars`;
+        });
+
+        star.addEventListener("click", () => {
+          const val = Number(star.dataset.value);
+          if (ratingInput) ratingInput.value = val;
+          updateStars(val);
+          if (starLabel) starLabel.textContent = ratingLabels[val] || `${val} Stars`;
+        });
+      });
+    }
+
+    if (toggleBtn && !toggleBtn.dataset.bound) {
+      toggleBtn.dataset.bound = "true";
+      toggleBtn.addEventListener("click", () => {
+        if (!writeForm) return;
+        const isHidden = writeForm.style.display === "none";
+        writeForm.style.display = isHidden ? "flex" : "none";
+        writeForm.style.flexDirection = "column";
+        toggleBtn.textContent = isHidden ? "Close Form" : "Write a Review";
+        if (isHidden) {
+          const nameInput = writeForm.querySelector("#reviewDriverName");
+          const curDriver = currentDriver();
+          if (nameInput && !nameInput.value && curDriver && curDriver.name) {
+            nameInput.value = curDriver.name;
+          }
+        }
+      });
+    }
+
+    if (cancelBtn && !cancelBtn.dataset.bound) {
+      cancelBtn.dataset.bound = "true";
+      cancelBtn.addEventListener("click", () => {
+        if (writeForm) writeForm.style.display = "none";
+        if (toggleBtn) toggleBtn.textContent = "Write a Review";
+      });
+    }
+
+    if (writeForm && !writeForm.dataset.bound) {
+      writeForm.dataset.bound = "true";
+      writeForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const submitBtn = writeForm.querySelector("#submitReviewBtn");
+        if (submitBtn) submitBtn.disabled = true;
+        try {
+          const commentInput = writeForm.querySelector("#reviewComment");
+          const nameInput = writeForm.querySelector("#reviewDriverName");
+          const curDriver = currentDriver();
+          const reviewData = {
+            slotId: slot.id,
+            slotName: slot.name,
+            driverId: driverIdOf(curDriver),
+            driverName: nameInput ? nameInput.value.trim() : (curDriver ? curDriver.name : "Driver"),
+            rating: Number(ratingInput ? ratingInput.value : 5),
+            comment: commentInput ? commentInput.value.trim() : ""
+          };
+          await ParkrStore.saveReview(reviewData);
+          if (commentInput) commentInput.value = "";
+          writeForm.style.display = "none";
+          if (toggleBtn) toggleBtn.textContent = "Write a Review";
+          await initDetails();
+        } catch (err) {
+          console.error("Failed to submit review:", err);
+          alert("Failed to submit review. Please try again.");
+        } finally {
+          if (submitBtn) submitBtn.disabled = false;
+        }
+      });
+    }
+
+    if (reviewsList) {
+      try {
+        const reviews = await ParkrStore.listReviews(slot.id);
+        if (!reviews || !reviews.length) {
+          reviewsList.innerHTML = `<p class="muted" style="text-align: center; padding: 16px 0;">No reviews yet for this slot. Be the first to share your experience!</p>`;
+        } else {
+          const avgRating = reviews.reduce((sum, r) => sum + Number(r.rating || 0), 0) / reviews.length;
+          document.querySelectorAll("[data-slot-rating]").forEach((item) => {
+            item.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="1" style="vertical-align: -1px; margin-right: 3px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>${avgRating.toFixed(1)} (${reviews.length} ${reviews.length === 1 ? "review" : "reviews"})`;
+          });
+
+          reviewsList.innerHTML = reviews.map((r) => {
+            const count = Math.max(1, Math.min(5, Number(r.rating) || 5));
+            const starsSvg = Array.from({ length: 5 }, (_, i) => {
+              const filled = i < count;
+              return `<svg width="13" height="13" viewBox="0 0 24 24" fill="${filled ? '#fbbf24' : 'none'}" stroke="${filled ? '#fbbf24' : '#64748b'}" stroke-width="1.5" style="display:inline-block; vertical-align:-1px; margin-right:1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+            }).join("");
+            const dateStr = r.createdAt ? new Date(r.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" }) : "Recent";
+            return `
+              <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <div>
+                    <strong style="color: #f8fafc; font-size: 0.92rem;">${h(r.driverName || "Driver")}</strong>
+                    <span style="margin-left: 8px; display: inline-flex; align-items: center;">${starsSvg}</span>
+                  </div>
+                  <span class="muted" style="font-size: 0.78rem;">${dateStr}</span>
+                </div>
+                <p style="margin: 0; font-size: 0.88rem; color: #cbd5e1; line-height: 1.45;">${h(r.comment || "")}</p>
+              </div>
+            `;
+          }).join("");
+        }
+      } catch (err) {
+        reviewsList.innerHTML = `<p class="muted">Could not load reviews.</p>`;
+      }
+    }
   }
 
   async function initBooking() {
@@ -258,6 +652,13 @@
 
     const hours = document.querySelector("#bookingHours");
     if (hours) hours.addEventListener("input", () => updateBookingTotal(slot.price));
+
+    const bookingDateInput = document.querySelector("#bookingDate");
+    const todayIso = new Date().toISOString().split("T")[0];
+    if (bookingDateInput) {
+      bookingDateInput.min = todayIso;
+      if (!bookingDateInput.value) bookingDateInput.value = todayIso;
+    }
 
     const paymentModeSelect = document.querySelector("#paymentMode");
     const paymentDetailText = document.querySelector("#paymentDetailText");
@@ -322,6 +723,12 @@
         return;
       }
       const data = new FormData(form);
+      const chosenDate = data.get("date");
+      const currentToday = new Date().toISOString().split("T")[0];
+      if (chosenDate && chosenDate < currentToday) {
+        Parkr.showToast("Cannot book parking for past dates.");
+        return;
+      }
       const hoursBooked = Number(data.get("hours") || 1);
       const amount = slot.price * hoursBooked;
       const paymentMode = data.get("paymentMode") || "UPI";
@@ -406,8 +813,12 @@
     }
     target.innerHTML = rows.map((booking, index) => {
       const isCancelled = booking.status === "cancelled";
+      const isPaid = paymentStatus(booking) === "paid";
+      const targetSlotId = booking.slotId || booking.id;
       const actionCell = isHistoryTable
-        ? `<td><button class="btn btn-secondary btn-small" type="button" data-cancel-booking="${attr(booking.id)}"${isCancelled ? " disabled" : ""}>${isCancelled ? "Cancelled" : "Cancel"}</button></td>`
+        ? `<td>${isCancelled
+            ? `<button class="btn btn-danger btn-small" type="button" data-delete-booking="${attr(booking.id || booking.bookingId)}" data-booking-code="${ParkrUtils.displayId(booking, "BK", index)}">Delete</button>`
+            : `<div class="inline-actions" style="gap: 6px;"><button class="btn btn-secondary btn-small" type="button" data-cancel-booking="${attr(booking.id || booking.bookingId)}">Cancel</button>${isPaid && targetSlotId ? `<a class="btn btn-primary btn-small" href="#details?slot=${encodeURIComponent(targetSlotId)}">Review</a>` : ""}</div>`}</td>`
         : "";
       return `
         <tr>
@@ -444,6 +855,23 @@
     if (!table || table.dataset.boundCancel) return;
     table.dataset.boundCancel = "true";
     table.addEventListener("click", async (event) => {
+      const deleteButton = event.target.closest("[data-delete-booking]");
+      if (deleteButton) {
+        const bookingCode = deleteButton.dataset.bookingCode || "this booking";
+        const confirmed = await Parkr.openFormDialog({
+          title: "Delete cancelled booking",
+          description: `Delete ${bookingCode} from your booking history?`,
+          submitLabel: "Delete from history",
+          submitClass: "btn btn-danger",
+          fields: []
+        });
+        if (!confirmed) return;
+        await ParkrStore.deleteBooking(deleteButton.dataset.deleteBooking);
+        Parkr.showToast("Booking removed from history");
+        initHistory();
+        return;
+      }
+
       const cancelButton = event.target.closest("[data-cancel-booking]");
       if (!cancelButton || cancelButton.disabled) return;
       const confirmed = await Parkr.openFormDialog({
