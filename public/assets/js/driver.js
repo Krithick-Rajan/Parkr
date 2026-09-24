@@ -64,11 +64,19 @@
     }
 
     const getUserCoords = () => new Promise((resolve) => {
-      if (!navigator.geolocation) return resolve([Number(destLat) - 0.025, Number(destLng) - 0.02]);
+      const saved = localStorage.getItem("parkr_driver_origin_coords");
+      let defaultCoords = [11.0289, 77.0267]; // CIT Coimbatore
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.lat && parsed.lng) defaultCoords = [parsed.lat, parsed.lng];
+        } catch (_) {}
+      }
+      if (!navigator.geolocation) return resolve(defaultCoords);
       navigator.geolocation.getCurrentPosition(
         (pos) => resolve([pos.coords.latitude, pos.coords.longitude]),
-        () => resolve([Number(destLat) - 0.025, Number(destLng) - 0.02]),
-        { timeout: 4000 }
+        () => resolve(defaultCoords),
+        { enableHighAccuracy: true, timeout: 6000 }
       );
     });
 
@@ -366,13 +374,26 @@
     let detailRouteLayer = null;
     let detailDriverMarker = null;
 
+    // Real Coimbatore default base (CIT Coimbatore)
+    const DEFAULT_ORIGIN = {
+      lat: 11.0289,
+      lng: 77.0267,
+      name: "Coimbatore Institute of Technology"
+    };
+
     if (destDisplay) {
       destDisplay.textContent = slot.name || "Selected Parking Slot";
     }
 
-    async function calculateDrivingRoute(useLiveGps = false) {
-      const slotLat = (slot.lat !== undefined && slot.lat !== null && !isNaN(Number(slot.lat))) ? Number(slot.lat) : 11.0168;
-      const slotLng = (slot.lng !== undefined && slot.lng !== null && !isNaN(Number(slot.lng))) ? Number(slot.lng) : 76.9558;
+    // Set initial origin value from localStorage or CIT default
+    if (originInput) {
+      const savedName = localStorage.getItem("parkr_driver_origin_name");
+      originInput.value = savedName || DEFAULT_ORIGIN.name;
+    }
+
+    async function calculateDrivingRoute(forcedCoords = null) {
+      const slotLat = (slot.lat !== undefined && slot.lat !== null && !isNaN(Number(slot.lat))) ? Number(slot.lat) : 11.03403;
+      const slotLng = (slot.lng !== undefined && slot.lng !== null && !isNaN(Number(slot.lng))) ? Number(slot.lng) : 77.02842;
 
       if (routeBtn) {
         routeBtn.disabled = true;
@@ -383,37 +404,71 @@
         routeInfo.innerHTML = `<span style="display:inline-flex; align-items:center; gap:6px; color:#38bdf8;">Finding driving path...</span>`;
       }
 
-      let userLat = 11.0168;
-      let userLng = 76.9558;
-      let originLabel = "Your Location";
+      let userLat = DEFAULT_ORIGIN.lat;
+      let userLng = DEFAULT_ORIGIN.lng;
+      let originLabel = DEFAULT_ORIGIN.name;
 
-      const query = originInput ? originInput.value.trim() : "";
-      const isCurrentLoc = useLiveGps || !query || query.toLowerCase() === "current location" || query.toLowerCase() === "my location";
-
-      if (isCurrentLoc) {
-        if (originInput) originInput.value = "Current Location";
-        const coords = await new Promise((resolve) => {
-          if (!navigator.geolocation) return resolve([slotLat - 0.025, slotLng - 0.02]);
-          navigator.geolocation.getCurrentPosition(
-            (pos) => resolve([pos.coords.latitude, pos.coords.longitude]),
-            () => resolve([slotLat - 0.025, slotLng - 0.02]),
-            { timeout: 4000 }
-          );
-        });
-        userLat = coords[0];
-        userLng = coords[1];
-        originLabel = "Current Location";
+      if (forcedCoords && forcedCoords.lat && forcedCoords.lng) {
+        userLat = Number(forcedCoords.lat);
+        userLng = Number(forcedCoords.lng);
+        originLabel = forcedCoords.name || `${userLat.toFixed(4)}, ${userLng.toFixed(4)}`;
       } else {
-        // Geocode custom location query (e.g. Gandhipuram, Airport, Railway station)
-        const geoResult = await ParkrUtils.geocodeWithNominatim(query);
-        if (geoResult && geoResult.lat && geoResult.lng) {
-          userLat = geoResult.lat;
-          userLng = geoResult.lng;
-          originLabel = geoResult.displayName.split(",")[0] || query;
+        const query = originInput ? originInput.value.trim() : "";
+        const isCurrentLoc = !query || query.toLowerCase() === "current location" || query.toLowerCase() === "my location";
+
+        if (isCurrentLoc) {
+          try {
+            const pos = await new Promise((resolve, reject) => {
+              if (!navigator.geolocation) return reject(new Error("No geolocation"));
+              navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                timeout: 7000,
+                maximumAge: 60000
+              });
+            });
+            userLat = pos.coords.latitude;
+            userLng = pos.coords.longitude;
+            const place = await ParkrUtils.reverseGeocodeWithNominatim(userLat, userLng);
+            originLabel = place ? place.split(",").slice(0, 2).join(",") : "My GPS Location";
+            if (originInput) originInput.value = originLabel;
+            localStorage.setItem("parkr_driver_origin_name", originLabel);
+            localStorage.setItem("parkr_driver_origin_coords", JSON.stringify({ lat: userLat, lng: userLng, name: originLabel }));
+          } catch (_) {
+            const saved = localStorage.getItem("parkr_driver_origin_coords");
+            if (saved) {
+              try {
+                const parsed = JSON.parse(saved);
+                if (parsed && parsed.lat && parsed.lng) {
+                  userLat = parsed.lat;
+                  userLng = parsed.lng;
+                  originLabel = parsed.name || DEFAULT_ORIGIN.name;
+                }
+              } catch (_) {}
+            }
+            if (originInput && (!originInput.value || originInput.value.toLowerCase().includes("location"))) {
+              originInput.value = originLabel;
+            }
+          }
         } else {
-          userLat = slotLat - 0.025;
-          userLng = slotLng - 0.02;
-          originLabel = query;
+          // Geocode custom query (e.g. "coimbatore institute of technology", "airport", "gandhipuram")
+          const geoResult = await ParkrUtils.geocodeWithNominatim(query);
+          if (geoResult && geoResult.lat && geoResult.lng) {
+            userLat = geoResult.lat;
+            userLng = geoResult.lng;
+            originLabel = geoResult.displayName.split(",")[0] || query;
+            localStorage.setItem("parkr_driver_origin_name", query);
+            localStorage.setItem("parkr_driver_origin_coords", JSON.stringify({ lat: userLat, lng: userLng, name: originLabel }));
+          } else {
+            const saved = localStorage.getItem("parkr_driver_origin_coords");
+            if (saved) {
+              try {
+                const parsed = JSON.parse(saved);
+                userLat = parsed.lat;
+                userLng = parsed.lng;
+              } catch (_) {}
+            }
+            originLabel = query;
+          }
         }
       }
 
@@ -433,8 +488,19 @@
           style: { color: "#f59e0b", weight: 5, opacity: 0.9, lineJoin: "round" }
         }).addTo(detailMapInstance);
 
-        detailDriverMarker = L.marker([userLat, userLng]).addTo(detailMapInstance)
-          .bindPopup(`<strong>FROM: ${h(originLabel)}</strong>`).openPopup();
+        detailDriverMarker = L.marker([userLat, userLng], { draggable: true }).addTo(detailMapInstance)
+          .bindPopup(`<strong>FROM: ${h(originLabel)}</strong><br><span style="font-size:0.75rem; color:#94a3b8;">Drag pin or click map to change start</span>`).openPopup();
+
+        // Allow dragging the starting pin anywhere on the map!
+        detailDriverMarker.on("dragend", async (e) => {
+          const newPos = e.target.getLatLng();
+          const place = await ParkrUtils.reverseGeocodeWithNominatim(newPos.lat, newPos.lng);
+          const name = place ? place.split(",").slice(0, 2).join(",") : `${newPos.lat.toFixed(4)}, ${newPos.lng.toFixed(4)}`;
+          if (originInput) originInput.value = name;
+          localStorage.setItem("parkr_driver_origin_name", name);
+          localStorage.setItem("parkr_driver_origin_coords", JSON.stringify({ lat: newPos.lat, lng: newPos.lng, name }));
+          calculateDrivingRoute({ lat: newPos.lat, lng: newPos.lng, name });
+        });
 
         try {
           detailMapInstance.fitBounds(detailRouteLayer.getBounds().pad(0.18));
@@ -455,24 +521,78 @@
       }
     }
 
+    // Clicking anywhere on map also moves origin and recalculates route
+    if (detailMapInstance) {
+      detailMapInstance.on("click", async (e) => {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+        const place = await ParkrUtils.reverseGeocodeWithNominatim(lat, lng);
+        const name = place ? place.split(",").slice(0, 2).join(",") : `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        if (originInput) originInput.value = name;
+        localStorage.setItem("parkr_driver_origin_name", name);
+        localStorage.setItem("parkr_driver_origin_coords", JSON.stringify({ lat, lng, name }));
+        calculateDrivingRoute({ lat, lng, name });
+      });
+    }
+
     if (routeBtn) {
-      routeBtn.onclick = () => calculateDrivingRoute(false);
+      routeBtn.onclick = () => calculateDrivingRoute();
     }
+
     if (gpsBtn) {
-      gpsBtn.onclick = () => calculateDrivingRoute(true);
+      gpsBtn.onclick = async () => {
+        gpsBtn.disabled = true;
+        gpsBtn.textContent = "Locating...";
+        if (routeInfo) {
+          routeInfo.style.display = "block";
+          routeInfo.innerHTML = `<span style="color:#38bdf8;">Acquiring live GPS position...</span>`;
+        }
+        try {
+          const pos = await new Promise((resolve, reject) => {
+            if (!navigator.geolocation) return reject(new Error("No geolocation available"));
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 30000
+            });
+          });
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const place = await ParkrUtils.reverseGeocodeWithNominatim(lat, lng);
+          const name = place ? place.split(",").slice(0, 2).join(",") : "My GPS Location";
+          if (originInput) originInput.value = name;
+          localStorage.setItem("parkr_driver_origin_name", name);
+          localStorage.setItem("parkr_driver_origin_coords", JSON.stringify({ lat, lng, name }));
+          if (typeof Parkr !== "undefined" && Parkr.showToast) {
+            Parkr.showToast(`GPS location: ${name}`);
+          }
+          await calculateDrivingRoute({ lat, lng, name });
+        } catch (err) {
+          console.warn("GPS error:", err.message);
+          if (typeof Parkr !== "undefined" && Parkr.showToast) {
+            Parkr.showToast("Could not access live GPS. Using Coimbatore campus location.", "warning");
+          }
+          if (originInput) originInput.value = DEFAULT_ORIGIN.name;
+          await calculateDrivingRoute(DEFAULT_ORIGIN);
+        } finally {
+          gpsBtn.disabled = false;
+          gpsBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>GPS`;
+        }
+      };
     }
+
     if (originInput) {
       originInput.onkeydown = (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
-          calculateDrivingRoute(false);
+          calculateDrivingRoute();
         }
       };
     }
 
     // Automatically calculate initial driving route upon opening details
     setTimeout(() => {
-      calculateDrivingRoute(false);
+      calculateDrivingRoute();
     }, 350);
 
     // Reviews list and review submission

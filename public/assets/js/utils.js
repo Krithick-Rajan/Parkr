@@ -180,6 +180,20 @@
     }
   }
 
+  async function reverseGeocodeWithNominatim(lat, lng) {
+    try {
+      if (lat === undefined || lng === undefined || isNaN(Number(lat)) || isNaN(Number(lng))) return null;
+      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${Number(lat)}&lon=${Number(lng)}`;
+      const resp = await fetch(url, { headers: { "Accept-Language": "en" } });
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      return data && data.display_name ? data.display_name : null;
+    } catch (err) {
+      console.warn("[Nominatim] Reverse geocode error:", err.message);
+      return null;
+    }
+  }
+
   global.ParkrUtils = {
     formatCurrency,
     getQueryParam,
@@ -193,6 +207,7 @@
     renderSlotCard,
     setText,
     getOsrmRoute,
-    geocodeWithNominatim
+    geocodeWithNominatim,
+    reverseGeocodeWithNominatim
   };
 })(window);
